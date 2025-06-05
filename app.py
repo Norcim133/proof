@@ -1,0 +1,71 @@
+#Chat related
+
+from mcpserver.pipeline import RAGService
+import logging
+from errors import *
+from ui.app_body import app_body
+from ui.custom_styles import *
+from ui.header import header
+
+
+#TODO: Make it so st.session_state.chat_started = False triggers an init that resets engine (e.g. or clean up indices selector)
+#TODO: Fork out of MCP repo
+#TODO: Add main check to app.py
+#TODO: Create admin mode (files upload)
+#TODO: Connect the retriever queries and the chat response
+
+# st.cache_resource
+def init_RAGService():
+    # Streamlit doesn't support .env
+    try:
+        rag_service = RAGService()
+        st.session_state["llama"] = rag_service
+    except Exception as e:
+        logging.error(f"Failed to initialize rag_service: {str(e)}")
+        raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
+    st.session_state.refresh_state = False
+
+def set_log_level():
+    # TODO: To change logging, change here and in config.toml
+    logging.basicConfig(
+        level=logging.INFO,  # Set the minimum logging level to INFO
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Optional: customize log format
+        datefmt='%Y-%m-%d %H:%M:%S'  # Optional: customize date format
+    )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+def main():
+    #Refresh state used for changes to llamacloud objects org, project, indices
+    #Set to true for first run of app
+
+    #Boilerplate config for all streamlit apps
+    st.set_page_config(page_title="Proof",
+                       page_icon=":apple:",
+                       layout="wide",
+                       menu_items=None,
+                       )
+
+    set_log_level()
+
+    if 'refresh_state' not in st.session_state:
+        st.session_state['refresh_state'] = True
+
+    header()
+    #HTML for control over streamlit components
+    alternate_chat_side_style()
+    container_shadow_styles()
+
+
+    try:
+
+        if st.session_state.refresh_state:
+            init_RAGService()
+
+        app_body()
+
+    except CriticalInitializationError as e:
+        st.warning(f"The controller could not be initialized\n\n Error code: {e} \n\nPlease try again later.")
+
+
+
+main()
