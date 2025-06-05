@@ -1,6 +1,6 @@
 #Chat related
 
-from mcpserver.pipeline import RAGService
+from pipeline import RAGService
 import logging
 from errors import *
 from ui.app_body import app_body
@@ -67,5 +67,5 @@ def main():
         st.warning(f"The controller could not be initialized\n\n Error code: {e} \n\nPlease try again later.")
 
 
-
-main()
+if __name__ == "__main__":
+    main()

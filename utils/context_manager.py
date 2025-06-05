@@ -3,21 +3,16 @@ from dataclasses import dataclass
 from typing import Optional, AsyncIterator
 from mcp.server.fastmcp import FastMCP
 
-from mcpserver.pipeline.pipeline import PipelineController
-from settings import AzureSettings
+from pipeline import RAGService
+from utils.settings import AzureSettings
 import logging
-from mcpserver.graph.controller import GraphController
-from mcpserver.pipeline import pipeline
-
-import os
 
 
 # Encapsulates state objects for passing via context
 @dataclass
 class AppContext:
     settings: AzureSettings
-    graph: GraphController
-    llama: PipelineController
+    llama: RAGService
 
 # FastMCP decorated tools accept contexts for managing lifecycle automatically when called by bot
 @asynccontextmanager
@@ -29,17 +24,15 @@ async def app_lifespan(server: Optional[FastMCP]) -> AsyncIterator[AppContext]:
     try:
         logging.info("Starting app lifespan")
         settings = AzureSettings()
-        user_client = settings.get_user_client()
-        graph = GraphController(user_client)
 
-        pipeline_controller = PipelineController()
+        rag_service = RAGService()
         logging.info("Settings initialized: in app_lifespan")
     except Exception as e:
         logging.error(f"Error in app_lifespan: {str(e)}")
         raise e
 
     try:
-        yield AppContext(settings=settings, graph=graph, llama=pipeline_controller)
+        yield AppContext(settings=settings, llama=rag_service)
     finally:
         #Add any cleanup if needed
         pass
