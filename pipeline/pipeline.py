@@ -1,5 +1,6 @@
 from llama_cloud.client import LlamaCloud
 from llama_index.indices.managed.llama_cloud import LlamaCloudIndex
+from llama_index.indices.managed.llama_cloud import LlamaCloudCompositeRetriever
 from llama_cloud.types import CloudSharepointDataSource
 from llama_index.core.schema import NodeWithScore
 from llama_cloud import RetrieverCreate, RetrieverPipeline
@@ -11,17 +12,21 @@ import json
 import logging
 from errors import *
 import httpx
+from pathlib import Path
+from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
 
 class RAGService:
     def __init__(self):
         try:
-            from pathlib import Path
-            from dotenv import load_dotenv
             env_path = Path('') / '.env'
             load_dotenv(dotenv_path=env_path)
             self.api_key = os.getenv("LLAMA_CLOUD_API_KEY")
             self.client = LlamaCloud(token=self.api_key)
+            self.index_object_list = None
+            self.composite_retriever = None
+
         except Exception as e:
             logging.error(f"Failed to initialize LlamaCloud client: {str(e)}")
             raise e
@@ -46,6 +51,60 @@ class RAGService:
             self._indices = None
             logging.error(f"Failed to get indices during init: {e}")
             raise IndexRetrievalError(f"Failed to get indices during init") from e
+
+        try:
+            self.index_object_list = self._build_indices()
+        except Exception as e:
+            self.index_object_list = None
+            logging.error(f"Failed to get indices during init: {e}")
+            raise IndexRetrievalError(f"Failed to get indices during init") from e
+
+        try:
+            self.composite_retriever = self._build_retriever()
+        except Exception as e:
+            self.composite_retriever = None
+            logging.error(f"Failed to get composite retriever during init: {e}")
+            raise RetrieverFailedError(f"Failed to get composite retriever during init") from e
+
+
+    def _build_retriever(self):
+        try:
+            composite_retriever = LlamaCloudCompositeRetriever(
+                name="Main Retriever",
+                project_id=self.project_id,
+                organization_id=self.organization_id,
+                create_if_not_exists=True,
+                # CompositeRetrievalMode.FULL will query each index individually and globally rerank results at the end
+                # CompositeRetrievalMode.ROUTED an agent determines which sub-indices are most relevant to the provided query (based on the sub-index's name & description you've provided)
+                mode=CompositeRetrievalMode.FULL,
+                rerank_top_n=5,
+            )
+            for index in self.index_object_list:
+                description = ""
+                files = self.list_pipeline_files(pipeline_id=getattr(index, "id"), raw_response=False)
+                for ids, contents in files.items():
+                    description += contents['path']
+
+                composite_retriever.add_index(index)
+                logger.info(f"Added index {description} to pipeline")
+
+            return composite_retriever
+        except Exception as e:
+            logger.error(f"Failed to get composite retriever during init: {e}")
+            raise RetrieverFailedError(f"Failed to get composite retriever during init") from e
+
+    def _build_indices(self):
+        index_object_list = []
+        for name, index_id in self.indices.items():
+            index = LlamaCloudIndex(
+                name=name,
+                project_id=self.project_id,
+                api_key=self.api_key,
+                organization_id=self.organization_id
+            )
+            index_object_list.append(index)
+
+        return index_object_list
 
     def _get_org_id(self):
         try:
@@ -210,21 +269,20 @@ class RAGService:
             return f"Failed to add data sources to pipeline: {e}"
 
     def _format_file_response(self, files):
-        result = ""
-        files_dict = {}
-        if files:
-            result += "Files accessible to LlamaCloud:\n\n"
-            for file in files:
-                files_dict[file.id] = {}
-                files_dict[file.id]['path'] = file.name
-                files_dict[file.id]['content_url'] = file.resource_info.get('url', None)
-                result += json.dumps(files_dict, indent=4)
-                result += "\n\n"
-            return result
-        else:
-            logging.warning("LIST_LLAMA_INDICES: No files found")
-            result += "No pipelines found.\n"
-
+        try:
+            result = ""
+            files_dict = {}
+            if files:
+                for file in files:
+                    files_dict[file.id] = {}
+                    files_dict[file.id]['path'] = file.name
+                    files_dict[file.id]['content_url'] = file.resource_info.get('url', None)
+                return files_dict
+            else:
+                logging.warning("LIST_LLAMA_INDICES: No files found")
+                return None
+        except Exception as e:
+            raise LlamaOperationFailedError(f"Failed to format files: {e}")
 
     def list_available_llama_files(self, raw_response=False):
 
@@ -531,13 +589,16 @@ class RAGService:
 
     def get_file_content_url(self, file_id: str, expires_in_seconds: int = 3600):
         """Get a presigned URL to download the file content"""
-        presigned_url = self.client.files.read_file_content(
-            id=file_id,
-            expires_at_seconds=expires_in_seconds,
-            organization_id=self.organization_id
-        )
+        try:
+            presigned_url = self.client.files.read_file_content(
+                id=file_id,
+                expires_at_seconds=expires_in_seconds,
+                organization_id=self.organization_id
+            )
 
-        return presigned_url.url
+            return presigned_url.url
+        except Exception as e:
+            logger.error(f"GET_FILE_CONTENT_URL: Error using file_id {file_id} to get content url: {e}")
 
     # Add these methods to the PipelineController class in pipeline.py
 
@@ -722,6 +783,27 @@ class RAGService:
             logging.error(e)
             return f"Failed to list available Llama files: {e}"
 
+    def _multi_modal_retrieval(self, query_text: str, pipeline_name):
+        if query_text is None or pipeline_name is None:
+            raise MissingValueError("Query text or pipeline_id is missing")
+        try:
+            multimodal_index = LlamaCloudIndex(
+                name=pipeline_name,
+                project_id=self.project_id,
+                organization_id=self.organization_id,
+                api_key=self.api_key
+            )
+
+            retriever = multimodal_index.as_retriever(
+                similarity_top_k=5,
+                retrieve_image_nodes=True
+            )
+            nodes_with_scores: list[NodeWithScore] = retriever.retrieve(query_text)
+            return nodes_with_scores
+        except Exception as e:
+            logging.error(f"MULTI_MODAL_RETRIVEAL error: {e}")
+            raise e
+
     def multi_modal_retrieval(self, query_text: str, pipeline_name):
         if query_text is None or pipeline_name is None:
             raise MissingValueError("Query text or pipeline_id is missing")
@@ -732,14 +814,25 @@ class RAGService:
             organization_id=self.organization_id,
             api_key=self.api_key
         )
+
+        # Try with images first
         try:
             retriever = multimodal_index.as_retriever(
                 similarity_top_k=5,
                 retrieve_image_nodes=True
             )
-            nodes_with_scores: list[NodeWithScore] = retriever.retrieve(query_text)
+            nodes_with_scores = retriever.retrieve(query_text)
             return nodes_with_scores
         except Exception as e:
-            logging.error(e)
-            raise e
-
+            logging.warning(f"Image retrieval failed, falling back to text-only: {e}")
+            # Fallback to text-only retrieval
+            try:
+                retriever = multimodal_index.as_retriever(
+                    similarity_top_k=5,
+                    retrieve_image_nodes=False
+                )
+                nodes_with_scores = retriever.retrieve(query_text)
+                return nodes_with_scores
+            except Exception as e2:
+                logging.error(f"MULTI_MODAL_RETRIEVAL error: {e2}")
+                raise e2

@@ -6,7 +6,8 @@ from .errors import (
     MissingValueError,
     APIError,
     LlamaCloudClientInitError,
-    LlamaOperationFailedError
+    LlamaOperationFailedError,
+    RetrieverFailedError
 )
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     'MissingValueError',
     'APIError',
     'LlamaCloudClientInitError',
-    'LlamaOperationFailedError'
+    'LlamaOperationFailedError',
+    'RetrieverFailedError'
 ]

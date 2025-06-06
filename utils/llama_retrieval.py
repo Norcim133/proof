@@ -34,4 +34,4 @@ def llama_retrieval(_nodes_with_scores):
             nodes.append(node_dict)
         return nodes
     except Exception as e:
-        raise f"LLAMA_RETRIEVAL error processing retrieval nodes: {e}"
+        raise Exception(f"LLAMA_RETRIEVAL error processing retrieval nodes: {e}")

@@ -21,3 +21,6 @@ class LlamaCloudClientInitError(Exception):
 
 class LlamaOperationFailedError(APIError):
     pass
+
+class RetrieverFailedError(APIError):
+    pass

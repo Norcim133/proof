@@ -18,38 +18,42 @@ logger = logging.getLogger(__name__)
 
 @st.cache_resource
 def llama_chatbot(current_index_name):
+    try:
+        llm = OpenAI(model="gpt-3.5-turbo")
 
-    llm = OpenAI(model="gpt-3.5-turbo")
+        memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
 
-    memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
+        pipeline_id = st.session_state.llama.indices[current_index_name]
 
-    pipeline_id = st.session_state.llama.indices[current_index_name]
+        api_key = st.secrets["LLAMA_CLOUD_API_KEY"]
+        index = LlamaCloudIndex(
+            id=pipeline_id,
+            project_id=st.session_state.llama.project_id,
+            api_key=api_key
+        )
 
-    api_key = st.secrets["LLAMA_CLOUD_API_KEY"]
-    index = LlamaCloudIndex(
-        id=pipeline_id,
-        project_id=st.session_state.llama.project_id,
-        api_key=api_key
-    )
+        chat_engine = CondensePlusContextChatEngine.from_defaults(
+            retriever=st.session_state.llama.composite_retriever,
+            chat_mode="condense_plus_context",
+            memory=memory,
+            llm=llm,
+            context_prompt=(
+                "You are a chatbot, the plays expert on the documents stored by the company."
+                "Your only focus is on understanding those documents at a factual level."
+                "The content for those documents is here:\n"
+                "{context_str}"
+                "\nInstruction: Use the previous chat history, or the context above, to interact and answer user questions about the documents."
+                "IMPORTANT: You do not bring other knowledge to responses beyond the document and chat context."
+                "If there are questions that can't be answered by the documents or chat, then simply say that is outside the scope of your memory."
+            ),
+            verbose=False,
+        )
 
-    chat_engine = CondensePlusContextChatEngine.from_defaults(
-        index.as_retriever(),
-        chat_mode="condense_plus_context",
-        memory=memory,
-        llm=llm,
-        context_prompt=(
-            "You are a chatbot, the plays expert on the documents stored by the company."
-            "Your only focus is on understanding those documents at a factual level."
-            "The content for those documents is here:\n"
-            "{context_str}"
-            "\nInstruction: Use the previous chat history, or the context above, to interact and answer user questions about the documents."
-            "IMPORTANT: You do not bring other knowledge to responses beyond the document and chat context."
-            "If there are questions that can't be answered by the documents or chat, then simply say that is outside the scope of your memory."
-        ),
-        verbose=False,
-    )
+        return chat_engine
+    except Exception as e:
+        logger.error(e)
+        return None
 
-    return chat_engine
 
 @st.fragment
 def chatbot():
