@@ -1,7 +1,7 @@
 [project]
-name = "outlookmcpserver"
+name = "proof"
 version = "0.1.0"
-description = "An MCP Server for giving Claude control over Outlook on Mac"
+description = "An agentic Board advisor"
 requires-python = ">=3.13"
 dependencies = [
     "mcp[cli]>=1.6.0",

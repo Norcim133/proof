@@ -6,29 +6,32 @@ import os
 import json
 import streamlit as st
 
-@st.cache_data
 def llama_retrieval(_nodes_with_scores):
-    if _nodes_with_scores is None:
-        raise ValueError("_nodes_with_scores cannot be None")
-    nodes = []
-    for node_with_score in _nodes_with_scores:
-        node = node_with_score.node
-        score = node_with_score.score
-        if isinstance(node, ImageNode):
-            image_source = node.resolve_image()
-            content = Image.open(image_source)
-            node_type = "image"
-        else:
-            content = node.get_text()
-            node_type = "text"
-        metadata = node.metadata
-        file_id = node.metadata.get('file_id')
-        file_url = st.session_state.llama.get_file_content_url(file_id=file_id)
-        node_dict = {'metadata': metadata,
-                     'type': node_type,
-                     'content': content,
-                     'url': file_url,
-                     'score': score
-                    }
-        nodes.append(node_dict)
-    return nodes
+    try:
+        if _nodes_with_scores is None:
+            raise ValueError("LLAMA_RETRIEVAL: _nodes_with_scores cannot be None")
+        nodes = []
+        for node_with_score in _nodes_with_scores:
+            node = node_with_score.node
+            score = node_with_score.score
+            if isinstance(node, ImageNode):
+                image_source = node.resolve_image()
+                content = Image.open(image_source)
+                node_type = "image"
+            else:
+                content = node.get_text()
+                node_type = "text"
+            metadata = node.metadata
+            file_id = node.metadata.get('file_id')
+            file_url = st.session_state.llama.get_file_content_url(file_id=file_id)
+            node_dict = {'metadata': metadata,
+                         'type': node_type,
+                         'content': content,
+                         'url': file_url,
+                         'score': score,
+                         'id': node.node_id
+                        }
+            nodes.append(node_dict)
+        return nodes
+    except Exception as e:
+        raise f"LLAMA_RETRIEVAL error processing retrieval nodes: {e}"

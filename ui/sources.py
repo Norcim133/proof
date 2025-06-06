@@ -10,8 +10,10 @@ def render_sources(nodes_list, source_type, title, render_content_func):
     """Generic source renderer that handles common logic."""
     st.subheader(title)
     try:
+        node_count = 0
         for node in nodes_list:
             if node['type'] == source_type and node.get('score', 0) >= 0.08:
+                node_count += 1
                 with st.container(border=True):
                     # Call the specific rendering function, passing the whole node
                     render_content_func(node)  # Specific renderer now takes the whole node
@@ -23,22 +25,30 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                         google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
 
                         st.link_button("See file", url=google_viewer_url, type='tertiary', use_container_width=True)
-                    st.write(f"Relevancy: {node['score']:.2f}")  # Formatting score
+                    st.write(f"Relevancy: {node['score']:.2f}")
+        if node_count == 0:
+            st.info("No sources of this type found")
     except Exception as e:
         logging.exception(f"Error rendering {source_type} sources: {e}")  # More specific logging
         st.warning(f"Error displaying {source_type} sources.")
 
 @st.dialog("Preview")
-def file_dialog_preview(node_thing=None, img=None):
+def file_dialog_preview(node_element=None, img=None):
     st.html("<span class='big-dialog'></span>")
-    if node_thing:
-        st.markdown(node_thing['content'])
+    if node_element:
+        st.text_area(
+            label="Content",
+            value=node_element['content'],
+            height=600,  # Adjust height as needed, or it will auto-size
+            disabled=False,  # Makes it read-only
+            label_visibility="collapsed"  # Hides the "Content" label above the text area
+        )
+
     else:
         st.image(img, width=1000)
 
-# Content renderers for each type (now take the whole node)
+@st.fragment
 def render_text_content(node):
-
     file_name = "Source"
     if isinstance(node.get('metadata'), dict):
         file_name = node['metadata'].get('file_name', 'Source')
@@ -63,16 +73,17 @@ def render_text_content(node):
     # )
 
 
-    if st.button("Expanded Summary", use_container_width=True):
-        file_dialog_preview(node_thing=node)
+    if st.button("Expanded Summary", use_container_width=True, key=f"{node['id'] }_expand_summary_button"):
+        file_dialog_preview(node_element=node)
 
+@st.fragment
 def render_image_content(node):
     file_name = "Image"
     if isinstance(node.get('metadata'), dict):
         file_name = node['metadata'].get('file_name', 'Image')
 
     st.image(node['content'], caption=f"{file_name}")
-    if st.button("Expanded Image", use_container_width=True):
+    if st.button("Expanded Image", use_container_width=True, key=f"{node['id']}_expand_image_button"):
         file_dialog_preview(img=node['content'])
 
 
@@ -95,7 +106,9 @@ def source_viewer_display():
             title="Text Sources",
             render_content_func=render_text_content
         )
+
         st.divider()
+
         render_sources(
             nodes_list=processed_nodes_list,
             source_type='image',
