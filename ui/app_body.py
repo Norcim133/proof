@@ -1,6 +1,6 @@
 import streamlit as st
 
-from ui.chatbot import chatbot
+from ui.chatbot import chat_display
 from ui.common_queries import common_queries
 from ui.indices import indices
 from ui.sources import sources
@@ -29,7 +29,7 @@ def app_body():
 
     c1, c2 = st.columns([2,1], vertical_alignment="top", gap="large")
     with c1:
-        chatbot()
+        chat_display()
 
     with c2:
         #file_manager()

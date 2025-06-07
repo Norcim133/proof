@@ -6,7 +6,7 @@ import os
 import json
 import streamlit as st
 
-def llama_retrieval(_nodes_with_scores):
+def process_retrieved_nodes(_nodes_with_scores):
     try:
         if _nodes_with_scores is None:
             raise ValueError("LLAMA_RETRIEVAL: _nodes_with_scores cannot be None")

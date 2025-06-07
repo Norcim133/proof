@@ -1,7 +1,7 @@
 from llama_cloud.client import LlamaCloud
 from llama_index.indices.managed.llama_cloud import LlamaCloudIndex
 from llama_index.indices.managed.llama_cloud import LlamaCloudCompositeRetriever
-from llama_cloud.types import CloudSharepointDataSource
+from llama_cloud.types import CloudSharepointDataSource, PresetRetrievalParams
 from llama_index.core.schema import NodeWithScore
 from llama_cloud import RetrieverCreate, RetrieverPipeline
 from llama_cloud import CompositeRetrievalMode, ReRankConfig, ReRankerType
@@ -24,7 +24,6 @@ class RAGService:
             load_dotenv(dotenv_path=env_path)
             self.api_key = os.getenv("LLAMA_CLOUD_API_KEY")
             self.client = LlamaCloud(token=self.api_key)
-            self.index_object_list = None
             self.composite_retriever = None
 
         except Exception as e:
@@ -53,13 +52,6 @@ class RAGService:
             raise IndexRetrievalError(f"Failed to get indices during init") from e
 
         try:
-            self.index_object_list = self._build_indices()
-        except Exception as e:
-            self.index_object_list = None
-            logging.error(f"Failed to get indices during init: {e}")
-            raise IndexRetrievalError(f"Failed to get indices during init") from e
-
-        try:
             self.composite_retriever = self._build_retriever()
         except Exception as e:
             self.composite_retriever = None
@@ -73,19 +65,35 @@ class RAGService:
                 name="Main Retriever",
                 project_id=self.project_id,
                 organization_id=self.organization_id,
-                create_if_not_exists=True,
+                create_if_not_exists=False,
                 # CompositeRetrievalMode.FULL will query each index individually and globally rerank results at the end
                 # CompositeRetrievalMode.ROUTED an agent determines which sub-indices are most relevant to the provided query (based on the sub-index's name & description you've provided)
                 mode=CompositeRetrievalMode.FULL,
                 rerank_top_n=5,
             )
-            for index in self.index_object_list:
+
+            index_object_list = self._build_indices()
+
+            for index in index_object_list:
                 description = ""
-                files = self.list_pipeline_files(pipeline_id=getattr(index, "id"), raw_response=False)
+                pipeline_id = getattr(index, "id")
+                files = self.list_pipeline_files(pipeline_id=pipeline_id, raw_response=False)
                 for ids, contents in files.items():
                     description += contents['path']
 
-                composite_retriever.add_index(index)
+                #Figures out if was set to multimodal retrieval in init
+                pipeline_metadata = self.get_pipeline(pipeline_id=pipeline_id)
+                take_screenshot_setting = pipeline_metadata.llama_parse_parameters.take_screenshot
+
+                if take_screenshot_setting:
+                    retrieve_image_nodes = True
+                else:
+                    retrieve_image_nodes = False
+
+                pipeline_specific_retrieval_params = PresetRetrievalParams(
+                    retrieve_image_nodes=retrieve_image_nodes,)
+
+                composite_retriever.add_index(index=index, preset_retrieval_parameters=pipeline_specific_retrieval_params)
                 logger.info(f"Added index {description} to pipeline")
 
             return composite_retriever
@@ -182,7 +190,9 @@ class RAGService:
         return pipeline_dict
 
 
-    def get_pipeline(self, pipeline_id=os.getenv('LLAMA_INDEX_ID')):
+    def get_pipeline(self, pipeline_id):
+        if pipeline_id is None:
+            raise MissingValueError("get_pipeline: No pipeline_id provided")
         try:
             response = self.client.pipelines.get_pipeline(pipeline_id=pipeline_id)
             return response
@@ -372,13 +382,11 @@ class RAGService:
 
         return retriever
 
-    def list_retrievers(self, project_id: Optional[str] = None):
+    def list_retrievers(self):
         """List all retrievers in the project"""
-        if project_id is None:
-            project_id = os.getenv('LLAMA_PROJECT_ID')
 
         retrievers = self.client.retrievers.list_retrievers(
-            project_id=project_id,
+            project_id=self.project_id,
             organization_id=self.organization_id
         )
 
@@ -387,9 +395,20 @@ class RAGService:
             result += f"- {retriever.name} (ID: {retriever.id})\n"
             if retriever.pipelines:
                 for pipeline in retriever.pipelines:
-                    result += f"  └─ Pipeline: {pipeline.pipeline_id} (top_k: {pipeline.top_k})\n"
+                    result += f"  └─ Pipeline: {pipeline.pipeline_id})\n"
 
         return result
+
+    def get_retriever(self, retriever_id: str):
+        try:
+            retriever = self.client.retrievers.get_retriver(retriever_id=retriever_id)
+            return retriever
+        except Exception as e:
+            logger.error(e)
+            raise LlamaOperationFailedError(f"Failed to get retriever: {e}")
+
+
+
 
     def retrieve_with_retriever(self,
                                       retriever_id: str,
@@ -482,18 +501,21 @@ class RAGService:
         response = self.client.pipelines.get_pipeline_status(pipeline_id=pipeline_id)
         return f"Pipeline {pipeline_id}: {response.status.value} (Job: {response.job_id})"
 
-    def check_all_pipeline_statuses(self, project_id: Optional[str] = None):
+    def check_all_pipeline_statuses(self, raw_response=False):
         """Check status of all pipelines in a project"""
-        if project_id is None:
-            project_id = os.getenv('LLAMA_PROJECT_ID')
 
+        project_id = self.project_id
         pipelines = self.client.pipelines.search_pipelines(project_id=project_id)
 
         results = []
         for pipeline in pipelines:
             try:
                 status = self.client.pipelines.get_pipeline_status(pipeline_id=pipeline.id)
-                results.append(f"{pipeline.name}: {status.status.value}")
+                if raw_response:
+                    results.append(f"{pipeline.name}: {status}")
+                else:
+                    results.append(f"{pipeline.name}: {status.status.value}")
+
             except:
                 results.append(f"{pipeline.name}: ERROR")
 
@@ -836,3 +858,16 @@ class RAGService:
             except Exception as e2:
                 logging.error(f"MULTI_MODAL_RETRIEVAL error: {e2}")
                 raise e2
+
+    def multi_modal_composite_retrieval(self, query_text: str):
+        if query_text is None:
+            raise MissingValueError("Query text is missing")
+
+        # Try with images first
+        try:
+            nodes_with_scores = self.composite_retriever.retrieve(query_text)
+            return nodes_with_scores
+        except Exception as e:
+            logging.warning(f"Image retrieval failed, falling back to text-only: {e}")
+            # Fallback to text-only retrieval
+            return None

@@ -13,6 +13,7 @@ def handle_settings_pills():
                 st.session_state.chat_engine.reset()
             st.session_state.chat_started = False
             st.session_state.messages = []
+            st.session_state.query_nodes = None
 
             logger.info("Resetting chat")
 

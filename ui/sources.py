@@ -3,7 +3,7 @@ import urllib.parse
 
 import streamlit as st
 
-from utils.llama_retrieval import llama_retrieval
+from utils.node_processor import process_retrieved_nodes
 from ui.custom_styles import big_dialog_styles
 
 def render_sources(nodes_list, source_type, title, render_content_func):
@@ -94,7 +94,7 @@ def source_viewer_display():
 
     try:
         # Assuming llama_retrieval is defined and accessible
-        processed_nodes_list = llama_retrieval(query_nodes_from_state)
+        processed_nodes_list = process_retrieved_nodes(query_nodes_from_state)
         if not processed_nodes_list:
             st.info("No source nodes were processed from the query.")
             return
