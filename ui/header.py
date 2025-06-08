@@ -3,6 +3,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def sync_documents():
+    logger.info("Syncing documents")
+    rag = st.session_state.get('llama', None)
+    if rag:
+        rag.run_retriever_sync()
+
+
 def handle_settings_pills():
     try:
         selection = st.session_state.get('settings_pills', None)
@@ -17,8 +24,8 @@ def handle_settings_pills():
 
             logger.info("Resetting chat")
 
-        elif selection == "Settings":
-            pass
+        elif selection == "Sync Documents":
+            sync_documents()
         else:
             pass
     except Exception as e:
@@ -26,14 +33,14 @@ def handle_settings_pills():
         logger.exception(e)
 
 def header():
-    col1, col2 = st.columns([5,1])
+    col1, col2 = st.columns([4,1])
     with col1:
         st.image("https://i.postimg.cc/vTQrtbS0/horizontal-name-only.jpg", output_format="auto", width=200)
 
     with col2:
         st.session_state.settings_pills = None
         st.pills("First",
-                 options=["Settings", "Reset Chat"],
+                 options=["Sync Documents", "Reset Chat"],
                  label_visibility="hidden",
                  selection_mode="single",
                  default=None,

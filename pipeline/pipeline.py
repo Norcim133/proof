@@ -27,6 +27,7 @@ class RAGService:
             self.file_id_name_dict = None
             self.composite_retriever_name = "Composite Retriever"
             self.composite_image_retriever_name = "Composite Image Retriever"
+            self.existing_retriever_names_list = None
             self.composite_retriever = None
             self.composite_image_retriever = None
 
@@ -62,6 +63,12 @@ class RAGService:
             raise IndexRetrievalError(f"Failed to get indices during init") from e
 
         try:
+            self.existing_retriever_names_list = self._list_retriever_names()
+        except Exception as e:
+            logging.error(f"Failed to list existing retrievers during init: {e}")
+            raise RetrieverFailedError(f"Failed to list existing retrievers during init") from e
+
+        try:
             self.composite_retriever = self._build_retriever()
         except Exception as e:
             self.composite_retriever = None
@@ -73,6 +80,62 @@ class RAGService:
         except Exception as e:
             self.composite_retriever = None
             logging.error(f"Failed to get composite retriever during init: {e}")
+            raise RetrieverFailedError(f"Failed to get composite retriever during init") from e
+
+    def _list_retriever_names(self):
+        existing_retriever_names = [retriever.name for retriever in self.list_retrievers(raw_response=True)]
+
+        return existing_retriever_names
+
+    def run_retriever_sync(self):
+        logger.info(f"Running retriever sync")
+        try:
+            self._sync_indices_with_retriever(self.composite_retriever)
+        except Exception as e:
+            logging.error(f"Failed to sync composite retriever: {e}")
+            raise RetrieverFailedError(f"Failed to sync composite retriever: {e}")
+        try:
+            self._sync_indices_with_retriever(self.composite_image_retriever)
+        except Exception as e:
+            logging.error(f"Failed to sync image composite retriever: {e}")
+            raise RetrieverFailedError(f"Failed to sync image composite retriever: {e}")
+
+
+    def _sync_indices_with_retriever(self, composite_retriever):
+        try:
+            index_object_list = self._build_indices()
+
+            for index in index_object_list:
+                description = ""
+                pipeline_id = getattr(index, "id")
+                files = self.list_pipeline_files(pipeline_id=pipeline_id, raw_response=False)
+                for ids, contents in files.items():
+                    description += contents['path']
+
+                if composite_retriever.name == self.composite_image_retriever_name:
+                    handle_images = True
+                else:
+                    handle_images = False
+
+                #Figures out if was set to multimodal retrieval in init
+                if handle_images:
+                    pipeline_metadata = self.get_pipeline(pipeline_id=pipeline_id)
+                    take_screenshot_setting = pipeline_metadata.llama_parse_parameters.take_screenshot
+                    if take_screenshot_setting:
+                        retrieve_image_nodes = True
+                    else:
+                        retrieve_image_nodes = False
+                else:
+                    retrieve_image_nodes = False
+
+                pipeline_specific_retrieval_params = PresetRetrievalParams(
+                    retrieve_image_nodes=retrieve_image_nodes,)
+
+                composite_retriever.add_index(index=index, preset_retrieval_parameters=pipeline_specific_retrieval_params)
+                logger.info(f"Added index {description} to pipeline")
+            return composite_retriever
+        except Exception as e:
+            logger.error(f"Failed to get composite retriever during init: {e}")
             raise RetrieverFailedError(f"Failed to get composite retriever during init") from e
 
     def _build_retriever(self, handle_images=False):
@@ -92,33 +155,12 @@ class RAGService:
                 rerank_top_n=5,
             )
 
-            index_object_list = self._build_indices()
+            if name in self.existing_retriever_names_list:
+                return composite_retriever
+            else:
+                composite_retriever = self._sync_indices_with_retriever(composite_retriever=composite_retriever)
 
-            for index in index_object_list:
-                description = ""
-                pipeline_id = getattr(index, "id")
-                files = self.list_pipeline_files(pipeline_id=pipeline_id, raw_response=False)
-                for ids, contents in files.items():
-                    description += contents['path']
-
-                #Figures out if was set to multimodal retrieval in init
-                if handle_images:
-                    pipeline_metadata = self.get_pipeline(pipeline_id=pipeline_id)
-                    take_screenshot_setting = pipeline_metadata.llama_parse_parameters.take_screenshot
-                    if take_screenshot_setting:
-                        retrieve_image_nodes = True
-                    else:
-                        retrieve_image_nodes = False
-                else:
-                    retrieve_image_nodes = False
-
-                pipeline_specific_retrieval_params = PresetRetrievalParams(
-                    retrieve_image_nodes=retrieve_image_nodes,)
-
-                composite_retriever.add_index(index=index, preset_retrieval_parameters=pipeline_specific_retrieval_params)
-                logger.info(f"Added index {description} to pipeline")
-
-            return composite_retriever
+                return composite_retriever
         except Exception as e:
             logger.error(f"Failed to get composite retriever during init: {e}")
             raise RetrieverFailedError(f"Failed to get composite retriever during init") from e

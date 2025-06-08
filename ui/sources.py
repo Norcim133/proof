@@ -142,7 +142,7 @@ def source_waiting():
 
 def sources():
 
-        st.header('Source Documents')
+
         container_height = 1000 if st.session_state.get('chat_started', False) else 500  # Adjusted for waiting message
 
         with st.container(border=True, height=container_height):  # Determine height based on state first

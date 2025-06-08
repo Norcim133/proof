@@ -74,7 +74,7 @@ def chat_windows():
 
 def chat_display():
     try:
-        st.header("Board Chat")
+
         if not st.session_state.get('llama', False):
             st.warning("Waiting for chatbot to load...")
             return

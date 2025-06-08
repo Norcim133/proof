@@ -5,7 +5,7 @@ import logging
 from errors import *
 from ui.app_body import app_body
 from ui.custom_styles import *
-from ui.header import header
+
 
 #TODO: Fix duplicate nodes
 #TODO: Create admin mode (files upload)
@@ -48,11 +48,10 @@ def main():
     if 'refresh_state' not in st.session_state:
         st.session_state['refresh_state'] = True
 
-    header()
+
     #HTML for control over streamlit components
     alternate_chat_side_style()
     container_shadow_styles()
-
 
     try:
 
