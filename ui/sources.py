@@ -5,6 +5,11 @@ import streamlit as st
 
 from utils.node_processor import process_retrieved_nodes
 from ui.custom_styles import big_dialog_styles
+from errors.errors import LlamaOperationFailedError
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 def render_sources(nodes_list, source_type, title, render_content_func):
     """Generic source renderer that handles common logic."""
@@ -35,6 +40,7 @@ def render_sources(nodes_list, source_type, title, render_content_func):
 @st.dialog("Preview")
 def file_dialog_preview(node_element=None, img=None):
     st.html("<span class='big-dialog'></span>")
+
     if node_element:
         st.text_area(
             label="Content",
@@ -47,8 +53,7 @@ def file_dialog_preview(node_element=None, img=None):
     else:
         st.image(img, width=1000)
 
-@st.fragment
-def render_text_content(node):
+def text_preview_expander(node):
     file_name = "Source"
     if isinstance(node.get('metadata'), dict):
         file_name = node['metadata'].get('file_name', 'Source')
@@ -63,15 +68,10 @@ def render_text_content(node):
         label_visibility="collapsed"  # Hides the "Content" label above the text area
     )
 
-    # expander.markdown(
-    #     f"""
-    #     <div style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">
-    #         {node['content']}
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True
-    # )
+@st.fragment
+def render_text_content(node):
 
+    text_preview_expander(node)
 
     if st.button("Expanded Summary", use_container_width=True, key=f"{node['id'] }_expand_summary_button"):
         file_dialog_preview(node_element=node)
@@ -86,18 +86,36 @@ def render_image_content(node):
     if st.button("Expanded Image", use_container_width=True, key=f"{node['id']}_expand_image_button"):
         file_dialog_preview(img=node['content'])
 
+@st.cache_data
+def run_retrieval(current_user_prompt):
+    if current_user_prompt is None:
+        raise ValueError("No user prompt provided to source retrieval")
 
-def source_viewer_display():
-
-    query_nodes_from_state = st.session_state.get('query_nodes', None)
-
+    try:
+        query_nodes_from_state = st.session_state.llama.multi_modal_composite_retrieval(
+            query_text=current_user_prompt)
+    except Exception as e:
+        logging.exception(f"RUN_RETRIEVAL: Error running multi-modal retrieval: {e}")
+        raise LlamaOperationFailedError
 
     try:
         # Assuming llama_retrieval is defined and accessible
         processed_nodes_list = process_retrieved_nodes(query_nodes_from_state)
-        if not processed_nodes_list:
-            st.info("No source nodes were processed from the query.")
+
+        return processed_nodes_list
+
+    except Exception as e:
+        logger.exception(f"Error processing {current_user_prompt}: {e}")
+        raise
+
+
+def source_viewer_display():
+
+    try:
+        if st.session_state.get("current_user_prompt", None) is None:
             return
+
+        processed_nodes_list = run_retrieval(st.session_state.current_user_prompt)
 
         # Call the generic renderer directly
         render_sources(
@@ -128,7 +146,6 @@ def sources():
     container_height = 1000 if st.session_state.get('chat_started', False) else 500  # Adjusted for waiting message
     big_dialog_styles()
     with st.container(border=True, height=container_height):  # Determine height based on state first
-
 
         st.header('Source Documents')
         if not st.session_state.get('chat_started', False):

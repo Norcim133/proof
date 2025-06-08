@@ -46,6 +46,7 @@ def chat_windows():
     effective_prompt = user_typed_prompt or common_prompt_from_state
     # If effective_prompt is truthy and now prompt is set to that
     if prompt := effective_prompt:
+        st.session_state.current_user_prompt = prompt
         st.session_state.common_prompt = None #Reinit common prompt
         st.session_state.chat_started = True
         with user_placeholder:
@@ -56,13 +57,12 @@ def chat_windows():
         #===================
         #Separate retriever
         #===================
-        st.session_state.query_nodes = st.session_state.llama.multi_modal_composite_retrieval(query_text=prompt)
 
         with ai_placeholder:
             with st.chat_message("assistant"):
 
-                response = st.write_stream(st.session_state.chat_engine.stream_chat(prompt).response_gen)
-                #response = "Hi there testing"
+                #response = st.write_stream(st.session_state.chat_engine.stream_chat(prompt).response_gen)
+                response = "Hi there testing"
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
 

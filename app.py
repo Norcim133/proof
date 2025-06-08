@@ -7,12 +7,14 @@ from ui.app_body import app_body
 from ui.custom_styles import *
 from ui.header import header
 
-
+#TODO: Check fix on images indices
+#TODO: Fix it so user chat shows up after entering prompt
+#TODO: Stabilize the sources being cached
+#TODO: Fix the dialog scrolling
+#TODO: Fix images in sources: delete and re-add indices from/to retriever
 #TODO: Make it so st.session_state.chat_started = False triggers an init that resets engine (e.g. or clean up indices selector)
-#TODO: Fork out of MCP repo
-#TODO: Add main check to app.py
 #TODO: Create admin mode (files upload)
-#TODO: Connect the retriever queries and the chat response
+
 
 # st.cache_resource
 def init_RAGService():

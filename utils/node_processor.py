@@ -22,7 +22,11 @@ def process_retrieved_nodes(_nodes_with_scores):
                 content = node.get_text()
                 node_type = "text"
             metadata = node.metadata
-            file_id = node.metadata.get('file_id')
+
+            file_id = node.metadata.get('file_id', None)
+            if file_id is None:
+                file_name = node.metadata.get('file_name', None)
+                file_id = st.session_state.llama.file_id_name_dict[file_name]
             file_url = st.session_state.llama.get_file_content_url(file_id=file_id)
             node_dict = {'metadata': metadata,
                          'type': node_type,
