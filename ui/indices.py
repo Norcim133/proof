@@ -105,10 +105,13 @@ def indices():
             st.session_state['current_index_name'] = None
 
 
-        #indices_list_view()
-        st.subheader("Query Sources")
-        st.text("")
-        indices_selector()
+        if st.session_state.get('llama', None) is None:
+            st.info("Please wait for chatbot to initialize")
+        else:
+            #indices_list_view()
+            st.subheader("Query Sources")
+            st.text("")
+            indices_selector()
 
         st.text("")
         st.text("")

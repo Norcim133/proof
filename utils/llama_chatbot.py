@@ -6,7 +6,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@st.cache_resource
 def llama_chatbot():
     try:
         llm = OpenAI(model="gpt-3.5-turbo")

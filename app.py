@@ -26,6 +26,7 @@ def init_RAGService():
         logging.error(f"Failed to initialize rag_service: {str(e)}")
         raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
     st.session_state.refresh_state = False
+    st.rerun()
 
 def set_log_level():
     # TODO: To change logging, change here and in config.toml
@@ -60,10 +61,10 @@ def main():
 
     try:
 
+        app_body()
+
         if st.session_state.refresh_state:
             init_RAGService()
-
-        app_body()
 
     except CriticalInitializationError as e:
         st.warning(f"The controller could not be initialized\n\n Error code: {e} \n\nPlease try again later.")
