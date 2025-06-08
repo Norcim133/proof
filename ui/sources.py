@@ -86,7 +86,7 @@ def render_image_content(node):
     if st.button("Expanded Image", use_container_width=True, key=f"{node['id']}_expand_image_button"):
         file_dialog_preview(img=node['content'])
 
-@st.cache_data
+@st.cache_data(show_spinner="Retrieving sources...")
 def run_retrieval(current_user_prompt):
     if current_user_prompt is None:
         raise ValueError("No user prompt provided to source retrieval")
@@ -94,28 +94,26 @@ def run_retrieval(current_user_prompt):
     try:
         query_nodes_from_state = st.session_state.llama.multi_modal_composite_retrieval(
             query_text=current_user_prompt)
+
+        return query_nodes_from_state
     except Exception as e:
         logging.exception(f"RUN_RETRIEVAL: Error running multi-modal retrieval: {e}")
         raise LlamaOperationFailedError
 
-    try:
-        # Assuming llama_retrieval is defined and accessible
-        processed_nodes_list = process_retrieved_nodes(query_nodes_from_state)
-
-        return processed_nodes_list
-
-    except Exception as e:
-        logger.exception(f"Error processing {current_user_prompt}: {e}")
-        raise
-
 
 def source_viewer_display():
 
+    big_dialog_styles()
     try:
         if st.session_state.get("current_user_prompt", None) is None:
             return
 
-        processed_nodes_list = run_retrieval(st.session_state.current_user_prompt)
+        prompt = st.session_state.current_user_prompt
+
+        query_nodes_from_state = run_retrieval(prompt)
+
+        processed_nodes_list = process_retrieved_nodes(query_nodes_from_state, prompt)
+
 
         # Call the generic renderer directly
         render_sources(
@@ -143,14 +141,15 @@ def source_waiting():
 
 
 def sources():
-    container_height = 1000 if st.session_state.get('chat_started', False) else 500  # Adjusted for waiting message
-    big_dialog_styles()
-    with st.container(border=True, height=container_height):  # Determine height based on state first
 
         st.header('Source Documents')
-        if not st.session_state.get('chat_started', False):
-            source_waiting()
-        else:
-            source_viewer_display()
+        container_height = 1000 if st.session_state.get('chat_started', False) else 500  # Adjusted for waiting message
+
+        with st.container(border=True, height=container_height):  # Determine height based on state first
+
+            if not st.session_state.get('chat_started', False):
+                source_waiting()
+            else:
+                source_viewer_display()
 
 

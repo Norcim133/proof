@@ -6,7 +6,12 @@ import os
 import json
 import streamlit as st
 
-def process_retrieved_nodes(_nodes_with_scores):
+import logging
+
+logger = logging.getLogger(__name__)
+
+@st.cache_data(show_spinner="Formatting response...")
+def process_retrieved_nodes(_nodes_with_scores, prompt):
     try:
         if _nodes_with_scores is None:
             raise ValueError("LLAMA_RETRIEVAL: _nodes_with_scores cannot be None")
@@ -24,9 +29,12 @@ def process_retrieved_nodes(_nodes_with_scores):
             metadata = node.metadata
 
             file_id = node.metadata.get('file_id', None)
+            logger.info(f"PROCESS_RETRIEVED_NODES: original file_id {file_id}")
+
             if file_id is None:
                 file_name = node.metadata.get('file_name', None)
                 file_id = st.session_state.llama.file_id_name_dict[file_name]
+                logger.info(f"PROCESS_RETRIEVED_NODES: alternate approach yields file_id {file_id}")
             file_url = st.session_state.llama.get_file_content_url(file_id=file_id)
             node_dict = {'metadata': metadata,
                          'type': node_type,

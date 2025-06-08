@@ -27,22 +27,18 @@ def indices_list_view():
 
 def set_index_state_with_selector():
     st.session_state.current_index_name = st.session_state.get('indices_selector', None)
-    st.session_state.chat_started = False
 
 
 def indices_selector():
     #st.subheader("Theme Selector")
 
-    st.selectbox("Select a Source",
+    st.selectbox("Manage a Source",
                  options = st.session_state.llama.indices,
                  key = "indices_selector",
                  on_change=set_index_state_with_selector,
                  index = next((i for i, k in enumerate(st.session_state.llama.indices) if k == st.session_state.get('current_index_name')), None))
+
                  # Get index but reverts to first item in keys if item not there
-
-
-    #st.write(st.session_state.get('current_index_name', None))
-
 
 def rename_index():
     current_index_name = st.session_state.get('current_index_name', None)

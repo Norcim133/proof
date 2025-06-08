@@ -21,7 +21,7 @@ def app_body():
 
     st.logo(
         "assets/horizontal_NB.png",
-        size="large",
+        size="medium",
         icon_image="assets/square_NB.png"
     )
 
@@ -32,5 +32,5 @@ def app_body():
         chat_display()
 
     with c2:
-        #file_manager()
         sources()
+        #file_manager()
