@@ -9,6 +9,11 @@ def sync_documents():
     if rag:
         rag.run_retriever_sync()
 
+def handle_auth():
+    if st.user.is_logged_in:
+        st.logout()
+    else:
+        st.login()
 
 def handle_settings_pills():
     try:
@@ -26,6 +31,10 @@ def handle_settings_pills():
 
         elif selection == "Sync Documents":
             sync_documents()
+
+        elif selection == st.session_state.login_button_label:
+            handle_auth()
+
         else:
             pass
     except Exception as e:
@@ -33,14 +42,20 @@ def handle_settings_pills():
         logger.exception(e)
 
 def header():
-    col1, col2 = st.columns([4,1])
+    col1, col2 = st.columns([3,1])
     with col1:
         st.image("https://i.postimg.cc/vTQrtbS0/horizontal-name-only.jpg", output_format="auto", width=200)
+
+
+    if st.user.is_logged_in:
+        st.session_state.login_button_label = "Logout"
+    else:
+        st.session_state.login_button_label = "Login"
 
     with col2:
         st.session_state.settings_pills = None
         st.pills("First",
-                 options=["Sync Documents", "Reset Chat"],
+                 options=["Sync Documents", "Reset Chat", st.session_state.login_button_label],
                  label_visibility="hidden",
                  selection_mode="single",
                  default=None,

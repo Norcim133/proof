@@ -100,8 +100,9 @@ def indices():
         if "current_index_name" not in st.session_state:
             st.session_state['current_index_name'] = None
 
-
-        if st.session_state.get('llama', None) is None:
+        if not st.user.is_logged_in:
+            st.info("Please log in to get started.")
+        elif st.session_state.get('llama', None) is None:
             st.info("Please wait for chatbot to initialize")
         else:
             #indices_list_view()

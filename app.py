@@ -54,11 +54,17 @@ def main():
     container_shadow_styles()
 
     try:
+        if not st.user.is_logged_in:
 
-        app_body()
+            app_body()
 
-        if st.session_state.refresh_state:
-            init_RAGService()
+            st.stop()
+
+        else:
+            app_body()
+
+            if st.session_state.refresh_state:
+                init_RAGService()
 
     except CriticalInitializationError as e:
         st.warning(f"The controller could not be initialized\n\n Error code: {e} \n\nPlease try again later.")
