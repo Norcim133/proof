@@ -24,12 +24,13 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                     render_content_func(node)  # Specific renderer now takes the whole node
 
                     # Common elements
-                    source_doc_url = node.get('url')  # Use .get for safety
-                    if source_doc_url:
-                        encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
-                        google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
+                    if False:
+                        source_doc_url = node.get('url')  # Use .get for safety
+                        if source_doc_url:
+                            encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
+                            google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
 
-                        st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
+                            st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
                     st.write(f"Relevancy: {node['score']:.2f}")
         if node_count == 0:
             st.info("No reference of this type found")
