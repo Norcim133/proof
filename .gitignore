@@ -17,7 +17,7 @@ __pycache__/
 # Local auth and config
 auth_record.json
 auth_cache/
-.streamlit/
+.streamlit/secrets.toml
 
 
 # Test caches
