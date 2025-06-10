@@ -24,9 +24,9 @@ def init_RAGService():
         raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
 
     try:
-        load_dotenv()
 
         if False:
+            load_dotenv()
             # Load secrets from Streamlit for deployed app
             # and set them as environment variables
             openai_api_key_from_secrets = st.secrets["OPENAI_API_KEY"]
