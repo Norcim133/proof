@@ -15,7 +15,7 @@ from ui.custom_styles import *
 def init_RAGService():
     # Streamlit doesn't support .env
     try:
-        rag_service = RAGService()
+        rag_service = RAGService(llama_cloud_api_key=st.secrets['LLAMA_CLOUD_API_KEY'])
         st.session_state["llama"] = rag_service
     except Exception as e:
         logging.error(f"Failed to initialize rag_service: {str(e)}")

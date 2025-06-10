@@ -2,7 +2,6 @@ from llama_cloud.client import LlamaCloud
 from llama_index.indices.managed.llama_cloud import LlamaCloudIndex
 from llama_index.indices.managed.llama_cloud import LlamaCloudCompositeRetriever
 from llama_cloud.types import CloudSharepointDataSource, PresetRetrievalParams
-from llama_index.core.schema import NodeWithScore
 from llama_cloud import RetrieverCreate, RetrieverPipeline
 from llama_cloud import CompositeRetrievalMode, ReRankConfig, ReRankerType
 import tempfile
@@ -12,17 +11,13 @@ import json
 import logging
 from errors import *
 import httpx
-from pathlib import Path
-from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
 class RAGService:
-    def __init__(self):
+    def __init__(self, llama_cloud_api_key):
         try:
-            env_path = Path('') / '.env'
-            load_dotenv(dotenv_path=env_path)
-            self.api_key = os.getenv("LLAMA_CLOUD_API_KEY")
+            self.api_key = llama_cloud_api_key
             self.client = LlamaCloud(token=self.api_key)
             self.file_id_name_dict = None
             self.composite_retriever_name = "Composite Retriever"
@@ -169,8 +164,6 @@ class RAGService:
         """Build local index objects for use in local retriever"""
         index_object_list = []
         for name, index_id in self.indices.items():
-            if index_id == os.getenv("BAD_LLAMA_INDEX"):
-                continue
             index = LlamaCloudIndex(
                 name=name,
                 project_id=self.project_id,
@@ -282,14 +275,14 @@ class RAGService:
             result += json.dumps(source_dict, indent=4)
         return result
 
-    def create_sharepoint_data_source(self, folder_path=os.getenv('TARGET_FOLDER_NAME'), folder_id=os.getenv('TARGET_FOLDER_ID'), name_for_source=os.getenv('DATA_SOURCE_NAME')):
-
+    def create_sharepoint_data_source(self, folder_path, folder_id, name_for_source, site_name, client_id, client_secret, tenant_id):
+        """Connects llamacloud to a specific sharepoint directory"""
         try:
 
-            site_name = os.getenv('SHAREPOINT_SITE_NAME')
-            client_id = os.getenv('AZURE_CLIENT_ID')
-            client_secret = os.getenv('AZURE_CLIENT_SECRET')
-            tenant_id = os.getenv('AZURE_TENANT_ID')
+            site_name = site_name
+            client_id = client_id
+            client_secret = client_secret
+            tenant_id = tenant_id
             folder_path = folder_path
             folder_id = folder_id
             name = name_for_source
@@ -312,7 +305,7 @@ class RAGService:
         except Exception as e:
             return f"Possible .env variables not set with Azure credentials required for data source: {e}"
 
-    def get_data_source(self, data_source_id: str = os.getenv("DATA_SOURCE_ID")):
+    def get_data_source(self, data_source_id):
         if data_source_id is None:
             return "You must supply data_source_id to get data_source"
 
@@ -323,14 +316,14 @@ class RAGService:
 
         return data_source
 
-    def get_pipeline_datasources(self, pipeline_id: str= os.getenv("LLAMA_INDEX_ID")):
+    def get_pipeline_datasources(self, pipeline_id: str):
         try:
             response = self.client.pipelines.list_pipeline_data_sources(pipeline_id=pipeline_id)
             return response
         except Exception as e:
             return f"Failed to get pipelines data sources: {e}"
 
-    def add_data_source_to_pipeline(self, pipeline_id: str, data_source_id: str = os.getenv('DATA_SOURCE_ID'), sync_interval: float = 43200.0):
+    def add_data_source_to_pipeline(self, pipeline_id: str, data_source_id: str, sync_interval: float = 43200.0):
         data_sources = [
             {
                 'data_source_id': data_source_id,
@@ -378,7 +371,6 @@ class RAGService:
 
     def list_pipeline_files(self, pipeline_id: str, raw_response=False):
         try:
-            pipeline_id = os.getenv("LLAMA_INDEX_ID")
             files = self.client.pipelines.list_pipeline_files(pipeline_id=pipeline_id)
             if raw_response:
                 return files
@@ -398,7 +390,7 @@ class RAGService:
         return name_to_id_dict
 
 
-    def search_index(self, pipeline_id: str = os.getenv('LLAMA_INDEX_ID'), query: str = ""):
+    def search_index(self, pipeline_id: str, query: str = ""):
         try:
             result = self.client.pipelines.run_search(pipeline_id=pipeline_id, query=query)
 
@@ -414,7 +406,7 @@ class RAGService:
             logging.error(e)
             return f"Failed to search index: {e}"
 
-    def sync_pipeline(self, pipeline_id:str=os.getenv('LLAMA_INDEX_ID')):
+    def sync_pipeline(self, pipeline_id:str):
         try:
             response = self.client.pipelines.sync_pipeline(pipeline_id=pipeline_id)
             return response
@@ -425,15 +417,11 @@ class RAGService:
     def create_retriever(self, name: str, pipeline_ids: List[str], project_id: Optional[str] = None):
         """Create a new retriever with specified pipelines"""
 
-        if project_id is None:
-            project_id = os.getenv('LLAMA_PROJECT_ID')
-
         # Build pipeline configurations
         pipelines = []
         for pipeline_id in pipeline_ids:
             pipelines.append(RetrieverPipeline(
                 pipeline_id=pipeline_id,
-                top_k=10  # Default top_k per pipeline
             ))
 
         # Create the retriever
@@ -522,9 +510,6 @@ class RAGService:
                               project_id: Optional[str] = None):
         """Retrieve directly without creating a persistent retriever"""
 
-        if project_id is None:
-            project_id = os.getenv('LLAMA_PROJECT_ID')
-
         # CompositeRetrievalMode is already an enum, just use it directly
         mode_enum = CompositeRetrievalMode.ROUTING
         if mode.lower() == "full":
@@ -602,8 +587,6 @@ class RAGService:
                                                    project_id: Optional[str] = None):
         """Download from SharePoint and upload to LlamaCloud"""
 
-        if project_id is None:
-            project_id = os.getenv('LLAMA_PROJECT_ID')
 
         # Get file info from SharePoint
         file_info = graph_client.drives.by_drive_id(sharepoint_drive_id).items.by_drive_item_id(
@@ -668,7 +651,7 @@ class RAGService:
                 response = client.get(
                     url,
                     headers={
-                        "Authorization": f"Bearer {os.getenv('LLAMA_CLOUD_API_KEY')}",
+                        "Authorization": f"Bearer {self.api_key}",
                         "X-Organization-Id": self.organization_id
                     }
                 )
@@ -710,7 +693,7 @@ class RAGService:
             pipeline_config: Full pipeline configuration dict
         """
         if project_id is None:
-            project_id = os.getenv('LLAMA_PROJECT_ID')
+            project_id = self.project_id
 
         if pipeline_config is None:
             pipeline_config = {}
