@@ -5,6 +5,8 @@ import logging
 from errors import *
 from ui.app_body import app_body
 from ui.custom_styles import *
+import os
+from dotenv import load_dotenv
 
 
 #TODO: Fix duplicate nodes
@@ -20,6 +22,19 @@ def init_RAGService():
     except Exception as e:
         logging.error(f"Failed to initialize rag_service: {str(e)}")
         raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
+
+    try:
+        load_dotenv()
+
+        # Load secrets from Streamlit for deployed app
+        # and set them as environment variables
+        openai_api_key_from_secrets = st.secrets.get("OPENAI_API_KEY")
+        if openai_api_key_from_secrets:
+            os.environ["OPENAI_API_KEY"] = openai_api_key_from_secrets
+    except Exception as e:
+        raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
+
+
     st.session_state.refresh_state = False
     st.rerun()
 
