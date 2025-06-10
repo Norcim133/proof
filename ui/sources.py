@@ -24,13 +24,15 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                     render_content_func(node)  # Specific renderer now takes the whole node
 
                     # Common elements
-                    if False:
+                    if True:
                         source_doc_url = node.get('url')  # Use .get for safety
                         if source_doc_url:
                             encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
                             google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
 
-                            st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
+                            #st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
+                            st.link_button("Open original file", url=source_doc_url, type='tertiary',
+                                           use_container_width=True)
                     st.write(f"Relevancy: {node['score']:.2f}")
         if node_count == 0:
             st.info("No reference of this type found")
@@ -87,14 +89,15 @@ def render_image_content(node):
     if st.button("Expanded Image", use_container_width=True, key=f"{node['id']}_expand_image_button"):
         file_dialog_preview(img=node['content'])
 
-@st.cache_data(show_spinner="Retrieving references...")
+#@st.cache_data(show_spinner="Retrieving references...")
 def run_retrieval(current_user_prompt):
     if current_user_prompt is None:
         raise ValueError("No user prompt provided to run retrieval")
 
     try:
-        query_nodes_from_state = st.session_state.llama.multi_modal_composite_retrieval(
-            query_text=current_user_prompt)
+        with st.spinner("Retrieving references..."):
+            query_nodes_from_state = st.session_state.llama.multi_modal_composite_retrieval(
+                query_text=current_user_prompt)
 
         return query_nodes_from_state
     except Exception as e:
