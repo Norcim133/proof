@@ -36,6 +36,6 @@ def app_body():
         chat_display()
 
     with c2:
-        st.header('Source Documents')
+        st.header('References')
         sources()
         #file_manager()

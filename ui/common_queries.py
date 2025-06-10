@@ -30,13 +30,13 @@ def custom_button_3():
 def custom_button_4():
     frame = inspect.currentframe()
     key = frame.f_code.co_name
-    query = "Flag financial issues"
+    query = "Flag financial issues and charts"
     if st.button(query, use_container_width=True, key=key):
         st.session_state.common_prompt = query
 
 
 def common_queries():
-    st.subheader("Frequent Queries")
+    st.subheader("Common Queries")
     st.text("")
 
     custom_button_1()

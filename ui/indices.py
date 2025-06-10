@@ -32,7 +32,7 @@ def set_index_state_with_selector():
 def indices_selector():
     #st.subheader("Theme Selector")
 
-    st.selectbox("Manage a Source",
+    st.selectbox("Manage a Store",
                  options = st.session_state.llama.indices,
                  key = "indices_selector",
                  on_change=set_index_state_with_selector,
@@ -55,7 +55,7 @@ def rename_index():
 
 def rename_index_component():
 
-    @st.dialog("Rename Source")
+    @st.dialog("Rename Store")
     def index_rename_dialog():
         st.session_state['show_rename_index_dialog'] = False
         current_index_name = st.session_state.get('current_index_name', None)
@@ -78,7 +78,7 @@ def rename_index_component():
                 time.sleep(2)
                 st.rerun()
 
-    st.button("Rename Source",
+    st.button("Rename Store",
               on_click=index_rename_dialog,
               disabled=not st.session_state.get('indices_selector', False)
               )
@@ -93,7 +93,7 @@ def indices_edit():
         rename_index_component()
 
     with col2:
-        st.button("Delete Source")
+        st.button("Delete Store")
 
 def indices():
     try:
@@ -106,7 +106,7 @@ def indices():
             st.info("Please wait for chatbot to initialize")
         else:
             #indices_list_view()
-            st.subheader("Query Sources")
+            st.subheader("Document Stores")
             st.text("")
             indices_selector()
 

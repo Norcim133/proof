@@ -29,15 +29,15 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                         encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
                         google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
 
-                        st.link_button("See file", url=google_viewer_url, type='tertiary', use_container_width=True)
+                        st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
                     st.write(f"Relevancy: {node['score']:.2f}")
         if node_count == 0:
-            st.info("No sources of this type found")
+            st.info("No reference of this type found")
     except Exception as e:
         logging.exception(f"Error rendering {source_type} sources: {e}")  # More specific logging
         st.warning(f"Error displaying {source_type} sources.")
 
-@st.dialog("Preview")
+@st.dialog("AI Reference Point")
 def file_dialog_preview(node_element=None, img=None):
     st.html("<span class='big-dialog'></span>")
 
@@ -73,7 +73,7 @@ def render_text_content(node):
 
     text_preview_expander(node)
 
-    if st.button("Expanded Summary", use_container_width=True, key=f"{node['id'] }_expand_summary_button"):
+    if st.button("AI Reference", use_container_width=True, key=f"{node['id'] }_expand_summary_button"):
         file_dialog_preview(node_element=node)
 
 @st.fragment
@@ -86,10 +86,10 @@ def render_image_content(node):
     if st.button("Expanded Image", use_container_width=True, key=f"{node['id']}_expand_image_button"):
         file_dialog_preview(img=node['content'])
 
-@st.cache_data(show_spinner="Retrieving sources...")
+@st.cache_data(show_spinner="Retrieving references...")
 def run_retrieval(current_user_prompt):
     if current_user_prompt is None:
-        raise ValueError("No user prompt provided to source retrieval")
+        raise ValueError("No user prompt provided to run retrieval")
 
     try:
         query_nodes_from_state = st.session_state.llama.multi_modal_composite_retrieval(
@@ -119,7 +119,7 @@ def source_viewer_display():
         render_sources(
             nodes_list=processed_nodes_list,
             source_type='text',
-            title="Text Sources",
+            title="Text References",
             render_content_func=render_text_content
         )
 
@@ -128,13 +128,13 @@ def source_viewer_display():
         render_sources(
             nodes_list=processed_nodes_list,
             source_type='image',
-            title="Image Sources",
+            title="Image References",
             render_content_func=render_image_content
         )
 
     except Exception as e:
         logging.exception(f"Error in source_viewer_display: {e}")
-        st.error(f"An error occurred while displaying sources: {e}")
+        st.error(f"An error occurred while displaying references.")
 
 def source_waiting():
     st.info("Awaiting AI response to begin...")

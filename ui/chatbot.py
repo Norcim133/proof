@@ -70,8 +70,6 @@ def chat_windows():
         st.rerun()
 
 
-
-
 def chat_display():
     try:
 
