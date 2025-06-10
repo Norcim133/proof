@@ -41,6 +41,7 @@ def main():
                        page_icon=":apple:",
                        layout="wide",
                        menu_items=None,
+                       initial_sidebar_state="expanded",
                        )
 
     set_log_level()
