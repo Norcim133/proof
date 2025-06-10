@@ -8,7 +8,12 @@ logger = logging.getLogger(__name__)
 
 def llama_chatbot():
     try:
-        llm = OpenAI(model="gpt-3.5-turbo")
+        if st.user.is_logged_in:
+            api_key = st.secrets["OPENAI_API_KEY"]
+        else:
+            return None
+
+        llm = OpenAI(model="gpt-3.5-turbo", api_key=api_key)
 
         memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
 
