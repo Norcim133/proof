@@ -41,8 +41,10 @@ def process_retrieved_nodes(_nodes_with_scores, prompt):
                          'content': content,
                          'url': file_url,
                          'score': score,
-                         'id': node.node_id
-                        }
+                         'id': node.node_id,
+                         'file_id': file_id,
+                         'name':node.metadata.get('file_name', None)
+                         }
             nodes.append(node_dict)
         return nodes
     except Exception as e:
