@@ -16,9 +16,9 @@ def handle_auth():
         st.login()
 
 def handle_settings_pills():
-    try:
-        selection = st.session_state.get('settings_pills', None)
+    selection = st.session_state.get('settings_pills', None)
 
+    try:
         if selection == "Reset Chat":
             logger.info("Resetting chat settings")
             if st.session_state.chat_engine:
@@ -28,18 +28,26 @@ def handle_settings_pills():
             st.session_state.query_nodes = None
 
             logger.info("Resetting chat")
-
-        elif selection == "Sync Documents":
-            sync_documents()
-
-        elif selection == st.session_state.login_button_label:
-            handle_auth()
-
-        else:
-            pass
     except Exception as e:
-        st.warning("Issue resetting chat settings")
-        logger.exception(e)
+        logger.exception(f"Failed to reset chat settings: {e}")
+        st.warning("Issue resetting chat settings. Try again later.")
+
+    try:
+        if selection == "Sync Documents":
+            sync_documents()
+    except Exception as e:
+        logger.exception(f"Failed to sync documents: {e}")
+        st.warning("Issue syncing documents. Try again later.")
+
+    try:
+        if selection == st.session_state.login_button_label:
+            handle_auth()
+    except Exception as e:
+        logger.exception(f"Failed to handle auth: {e}")
+        st.warning("Issue handling login/logout. Refresh browser or again later.")
+
+
+
 
 def header():
     col1, col2 = st.columns([3,1])
