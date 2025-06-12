@@ -56,6 +56,7 @@ def main():
 
     set_log_level()
 
+    #State that will trigger reset of the llamacloud client and chat engine
     if 'refresh_state' not in st.session_state:
         st.session_state['refresh_state'] = True
 
@@ -74,6 +75,7 @@ def main():
         else:
             app_body()
 
+            #Init or reset llamacloud and chat engine instances (incl llamacloud and openai calls)
             if st.session_state.refresh_state:
                 init_RAGService()
 

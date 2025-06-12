@@ -33,6 +33,8 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                             #st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
                             st.link_button("Open original file", url=source_doc_url, type='tertiary',
                                            use_container_width=True)
+
+
                     st.write(f"Relevancy: {node['score']:.2f}")
         if node_count == 0:
             st.info("No reference of this type found")
@@ -107,12 +109,12 @@ def run_retrieval(current_user_prompt):
 
 def source_viewer_display():
 
-    big_dialog_styles()
+    big_dialog_styles() #TODO: Used for wider dialog but dialog has attribute for wide
     try:
         if st.session_state.get("current_user_prompt", None) is None:
             return
 
-        prompt = st.session_state.current_user_prompt
+        prompt = st.session_state.current_user_prompt #Gets from chatbot
 
         query_nodes_from_state = run_retrieval(prompt)
 
