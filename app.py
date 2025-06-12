@@ -48,7 +48,7 @@ def main():
 
     #Boilerplate config for all streamlit apps
     st.set_page_config(page_title="Proof",
-                       page_icon=":apple:",
+                       page_icon="assets/favicon_NB.png",
                        layout="wide",
                        menu_items=None,
                        initial_sidebar_state="expanded",
