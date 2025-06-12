@@ -27,8 +27,8 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                     if True:
                         source_doc_url = node.get('url')  # Use .get for safety
                         if source_doc_url:
-                            encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
-                            google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
+                            #encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
+                            #google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
 
                             #st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
                             st.link_button("Open original file", url=source_doc_url, type='tertiary',
@@ -120,22 +120,22 @@ def source_viewer_display():
 
         processed_nodes_list = process_retrieved_nodes(query_nodes_from_state, prompt)
 
-
         # Call the generic renderer directly
-        render_sources(
-            nodes_list=processed_nodes_list,
-            source_type='text',
-            title="Text References",
-            render_content_func=render_text_content
-        )
-
-        st.divider()
 
         render_sources(
             nodes_list=processed_nodes_list,
             source_type='image',
             title="Image References",
             render_content_func=render_image_content
+        )
+
+        st.divider()
+
+        render_sources(
+            nodes_list=processed_nodes_list,
+            source_type='text',
+            title="Text References",
+            render_content_func=render_text_content
         )
 
     except Exception as e:
