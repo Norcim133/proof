@@ -4,7 +4,6 @@ import urllib.parse
 import streamlit as st
 
 from utils.node_processor import process_retrieved_nodes
-from ui.custom_styles import big_dialog_styles
 from errors.errors import LlamaOperationFailedError
 
 import logging
@@ -19,7 +18,7 @@ def render_sources(nodes_list, source_type, title, render_content_func):
         for node in nodes_list:
             if node['type'] == source_type and node.get('score', 0) >= 0.08:
                 node_count += 1
-                with st.container(border=True):
+                with st.container(border=True, key=f"shadow_node_{node_count}"):
                     # Call the specific rendering function, passing the whole node
                     render_content_func(node)  # Specific renderer now takes the whole node
 
@@ -29,7 +28,6 @@ def render_sources(nodes_list, source_type, title, render_content_func):
                         if source_doc_url:
                             #encoded_s3_url = urllib.parse.quote_plus(source_doc_url)
                             #google_viewer_url = f"https://docs.google.com/gview?url={encoded_s3_url}&embedded=true"
-
                             #st.link_button("See original file", url=google_viewer_url, type='tertiary', use_container_width=True)
                             st.link_button("Open original file", url=source_doc_url, type='tertiary',
                                            use_container_width=True)
@@ -42,21 +40,21 @@ def render_sources(nodes_list, source_type, title, render_content_func):
         logging.exception(f"Error rendering {source_type} sources: {e}")  # More specific logging
         st.warning(f"Error displaying {source_type} sources.")
 
-@st.dialog("AI Reference Point")
+@st.dialog("AI Reference Point", width='large')
 def file_dialog_preview(node_element=None, img=None):
-    st.html("<span class='big-dialog'></span>")
-
+    #st.html("<span class='big-dialog'></span>")
+    height = 800
     if node_element:
         st.text_area(
             label="Content",
             value=node_element['content'],
-            height=600,  # Adjust height as needed, or it will auto-size
+            height=height, # Adjust height as needed, or it will auto-size
             disabled=False,  # Makes it read-only
             label_visibility="collapsed"  # Hides the "Content" label above the text area
         )
 
     else:
-        st.image(img, width=1000)
+        st.image(img, width=700)
 
 def text_preview_expander(node):
     file_name = "Source"
@@ -64,7 +62,6 @@ def text_preview_expander(node):
         file_name = node['metadata'].get('file_name', 'Source')
 
     expander = st.expander(f"File: {file_name}")
-    #expander.write(node['content'])
     expander.text_area(
         label="Content",
         value=node['content'],
@@ -109,7 +106,6 @@ def run_retrieval(current_user_prompt):
 
 def source_viewer_display():
 
-    big_dialog_styles() #TODO: Used for wider dialog but dialog has attribute for wide
     try:
         if st.session_state.get("current_user_prompt", None) is None:
             return
@@ -145,17 +141,12 @@ def source_viewer_display():
 def source_waiting():
     st.info("Awaiting AI response to begin...")
 
-
+@st.fragment
 def sources():
 
-
-        container_height = 1000 if st.session_state.get('chat_started', False) else 500  # Adjusted for waiting message
-
-        with st.container(border=True, height=container_height):  # Determine height based on state first
-
-            if not st.session_state.get('chat_started', False):
-                source_waiting()
-            else:
-                source_viewer_display()
+    if not st.session_state.get('chat_started', False):
+        source_waiting()
+    else:
+        source_viewer_display()
 
 

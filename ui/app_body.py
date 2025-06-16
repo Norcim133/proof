@@ -28,14 +28,24 @@ def app_body():
         icon_image="assets/square_NB.png"
     )
 
+    st.session_state.window_height = 600
+
     st_side_bar()
 
     c1, c2 = st.columns([2,1], vertical_alignment="top", gap="large")
     with c1:
         st.header("Board Chat")
-        chat_display()
+        chat_placeholder = st.empty()
 
     with c2:
         st.header('References')
-        sources()
+
+        with st.container(border=True, height=st.session_state.get('window_height', 600), key="shadow_sources"):
+            sources_placeholder = st.empty()
+
+
+        with chat_placeholder:
+            chat_display()
+        with sources_placeholder:
+            sources()
         #file_manager()

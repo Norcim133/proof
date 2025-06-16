@@ -35,17 +35,16 @@ def container_shadow_styles():
     """
     st.markdown(shadow_css, unsafe_allow_html=True)
 
-def big_dialog_styles():
-    #Must have dialog title "Title" and have..
-    #st.html("<span class='big-dialog'></span>") in them
-    st.markdown(
-        """
+def container_shadow_styles():
+    """Looks for containers with st-key (default for key) + shadow at start and then shadows the parent of that div"""
+    shadow_css = """
     <style>
-    div[data-testid="stDialog"] div[role="dialog"]:has(.big-dialog) {
-        width: 80vw;
-        height: 80vh;
+    /* Target the parent of any element with a class containing st-key-shadow */
+    :has(> [class*="st-key-shadow"]) {
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.2);
+        border-radius: 0.5rem;
+        transition: box-shadow 0.3s ease;
     }
     </style>
-    """,
-        unsafe_allow_html=True,
-    )
+    """
+    st.markdown(shadow_css, unsafe_allow_html=True)

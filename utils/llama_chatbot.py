@@ -13,7 +13,7 @@ def llama_chatbot():
         else:
             return None
 
-        llm = OpenAI(model="gpt-3.5-turbo", api_key=api_key)
+        llm = OpenAI(model="o4-mini-2025-04-16", api_key=api_key)
 
         memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
 
@@ -29,6 +29,7 @@ def llama_chatbot():
                 "{context_str}"
                 "\nInstruction: Use the previous chat history, or the context above, to interact and answer Director questions about the documents."
                 "You can make inferences directly related to the content of the documents: noting trends or gaps or material observations."
+                "IMPORTANT: Ensure all your responses use standard textual formatting with appropriate spacing between words and numbers. Do not use special text styles or italics unless explicitly requested or for standard emphasis. Avoid equation formats in markdown that can render text in odd ways."
                 "IMPORTANT: You do not return technical details like file_ids or pipeline names as you only deal in content, inference, and filenames."
                 "IMPORTANT: You do NOT bring other knowledge or inferences to responses beyond the document and chat context."
                 "IMPORTANT: You do NOT respond with general answers on theory or concepts or guesses outside of these documents."
