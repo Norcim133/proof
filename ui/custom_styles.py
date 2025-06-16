@@ -20,7 +20,7 @@ def alternate_chat_side_style():
         unsafe_allow_html=True,
     )
 
-def container_shadow_styles():
+def _container_shadow_styles():
     shadow_css = """
     <style>
     /* Apply shadow to stVerticalBlockBorderWrapper when it's a direct child of stVerticalBlock,
