@@ -1,5 +1,6 @@
 from utils.llama_chatbot import llama_chatbot
-from .indices import *
+#from .indices import *
+import streamlit as st
 import logging
 
 #TODO: Include history as context
@@ -72,7 +73,10 @@ def chat_windows():
             with st.chat_message("assistant"):
 
                 # Get the original, raw generator from the chat engine.
-                raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
+                if st.session_state.get("reg_prompt", False):
+                    raw_response_generator = st.session_state.reg_chat_engine.stream_chat(prompt).response_gen
+                else:
+                    raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
 
                 # Create an instance of your new cleaning generator.
                 cleaned_response_generator = stream_and_clean_latex(raw_response_generator)
@@ -99,6 +103,15 @@ def chat_display():
                 logging.exception(f"CHATBOT: {e}")
                 st.warning("There was a problem connecting to the chat engine. Please try again later.")
                 return
+
+        if 'reg_chat_engine' not in st.session_state:
+            try:
+                st.session_state.reg_chat_engine = llama_chatbot(reg_bot=True)
+            except Exception as e:
+                logging.exception(f"CHATBOT: {e}")
+                st.warning("There was a problem connecting to the chat engine. Please try again later.")
+                return
+
 
         chat_windows()
     except Exception as e:

@@ -5,6 +5,7 @@ from ui.common_queries import common_queries
 from ui.indices import indices
 from ui.sources import sources
 from ui.header import header
+from ui.reg_toggle import reg_toggle
 
 
 def st_side_bar():
@@ -16,6 +17,9 @@ def st_side_bar():
 
         common_queries()
         #dashboard()
+        st.divider()
+
+        reg_toggle()
 
 
 def app_body():
