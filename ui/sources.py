@@ -18,7 +18,7 @@ def render_sources(nodes_list, source_type, title, render_content_func):
         for node in nodes_list:
             if node['type'] == source_type and node.get('score', 0) >= 0.08:
                 node_count += 1
-                with st.container(border=True, key=f"shadow_node_{node_count}"):
+                with st.container(border=True, key=f"shadow_node_{source_type}_{node_count}"):
                     # Call the specific rendering function, passing the whole node
                     render_content_func(node)  # Specific renderer now takes the whole node
 
@@ -114,7 +114,7 @@ def source_viewer_display():
 
         query_nodes_from_state = run_retrieval(prompt)
 
-        processed_nodes_list = process_retrieved_nodes(query_nodes_from_state, prompt)
+        processed_nodes_list = process_retrieved_nodes(query_nodes_from_state)
 
         # Call the generic renderer directly
 

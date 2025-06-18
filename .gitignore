@@ -21,6 +21,8 @@ auth_cache/
 .streamlit/secrets.toml
 
 
+assets/sample_board_docs/regs/
+
 # Test caches
 tests/__pycache__/
 tests/

@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 #@st.cache_data(show_spinner="Formatting response...")
-def process_retrieved_nodes(_nodes_with_scores, prompt):
+def process_retrieved_nodes(_nodes_with_scores):
     try:
         with st.spinner("Formatting response..."):
             if _nodes_with_scores is None:
