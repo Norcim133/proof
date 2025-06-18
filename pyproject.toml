@@ -15,4 +15,9 @@ dependencies = [
     "streamlit",
     "llama_index",
     "Authlib",
+    "azure-storage-blob",
+    "azure-search-documents",
+    "azure-ai-documentintelligence",
+    "azure-ai-formrecognizer"
+
 ]
