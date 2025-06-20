@@ -84,8 +84,7 @@ class AzureRAGService:
         with open(file_path, "rb") as f:
             poller = self.doc_intelligence.begin_analyze_document(
                 "prebuilt-layout",
-                f,
-                content_type="application/pdf"
+                f
             )
             return poller.result()
 

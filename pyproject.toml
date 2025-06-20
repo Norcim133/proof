@@ -2,7 +2,7 @@
 name = "proof"
 version = "0.1.0"
 description = "An agentic Board advisor"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "mcp[cli]>=1.6.0",
     "azure-identity",
@@ -18,6 +18,10 @@ dependencies = [
     "azure-storage-blob",
     "azure-search-documents",
     "azure-ai-documentintelligence",
-    "azure-ai-formrecognizer"
-
+    "azure-ai-formrecognizer",
+    "azure-ai-vision-imageanalysis",
+    "pytest-asyncio",
+    "docling",
+    "mlx-vlm",
+    "openai"
 ]
