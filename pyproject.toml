@@ -15,5 +15,6 @@ dependencies = [
     "streamlit",
     "llama_index",
     "Authlib",
-    "groundx"
+    "groundx",
+    "openai"
 ]

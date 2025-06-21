@@ -144,9 +144,10 @@ def source_waiting():
 @st.fragment
 def sources():
 
-    if not st.session_state.get('chat_started', False):
-        source_waiting()
-    else:
-        source_viewer_display()
+    if False:
+        if not st.session_state.get('chat_started', False):
+            source_waiting()
+        else:
+            source_viewer_display()
 
 

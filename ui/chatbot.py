@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def get_response_stream(prompt, context, chat_history):
+    return st.session_state.openai_service.stream_completion(prompt, context, chat_history)
 
 def stream_and_clean_latex(stream_generator):
     """Required to prevent poor formatting when markdown thinks there is an equation"""
@@ -44,23 +46,26 @@ def chat_windows():
 
     common_prompt_from_state = st.session_state.get('common_prompt', None)
 
-    default_chat_prompt = st.session_state.get('common_prompt', None) or "Ask a question"
+
+    placeholder_text = st.session_state.get('common_prompt', None) or "Ask a question"
 
     user_typed_prompt = st.chat_input(
-        default_chat_prompt,
+        placeholder_text,
         disabled=not st.session_state.get('llama', None)
     )
 
     effective_prompt = user_typed_prompt or common_prompt_from_state
+
     # If effective_prompt is truthy and now prompt is set to that
     if prompt := effective_prompt:
         st.session_state.chatbot_info_placeholder.empty()
         st.session_state.chat_started = True
         st.session_state.common_prompt = None #Reinit common prompt
-        st.session_state.current_user_prompt = prompt
+        st.session_state.current_user_prompt = prompt #Used to align prompt in references query
 
         with user_placeholder:
             st.chat_message("user").markdown(prompt)
+
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -69,19 +74,31 @@ def chat_windows():
         #===================
 
         with ai_placeholder:
+            if False:
+                with st.chat_message("assistant"):
+
+                    # Get the original, raw generator from the chat engine.
+                    raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
+
+                    service = st.session_state.get("groundx_service", None)
+
+                    # Create an instance of your new cleaning generator.
+                    cleaned_response_generator = stream_and_clean_latex(raw_response_generator)
+
+                    # Pass the CLEANED generator to st.write_stream.
+                    # The 'response' variable will now hold the full, already cleaned string after the stream is done.
+                    response = st.write_stream(cleaned_response_generator)
+
+            # Call to groundx context
+            st.session_state.rag_response = st.session_state.groundx_service.search_content(prompt)
+
+            # Get groundx llm formatting of response
+            context = st.session_state.groundx_service.get_search_context(st.session_state.rag_response)
+
+            # Call to LLM
             with st.chat_message("assistant"):
-
-                # Get the original, raw generator from the chat engine.
-                raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
-
-                service = st.session_state.get("groundx_service", None)
-
-                # Create an instance of your new cleaning generator.
-                cleaned_response_generator = stream_and_clean_latex(raw_response_generator)
-
-                # Pass the CLEANED generator to st.write_stream.
-                # The 'response' variable will now hold the full, already cleaned string after the stream is done.
-                response = st.write_stream(cleaned_response_generator)
+                stream = get_response_stream(prompt, context, st.session_state.messages)
+                response = st.write_stream(stream)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()

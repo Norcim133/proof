@@ -1,11 +1,12 @@
 import os
 from groundx import GroundX, BadRequestError
 import logging
+from dotenv import load_dotenv
 from pprint import pprint
 
 logger = logging.getLogger(__name__)
 
-
+load_dotenv()
 
 class GroundService:
     def __init__(self, group_name="main_group", auto_load_buckets=True):
@@ -308,14 +309,16 @@ class GroundService:
             logger.error(f"Failed to search content: {str(e)}")
             raise
 
-    def get_search_context(self, query, n=20):
+    def get_search_context(self, response):
         """
         Get search context optimized for LLM usage (simplified method)
 
         Returns just the text context for direct LLM usage
         """
+        if response is None:
+            logger.info(f"No response provided to get_search_context")
+            return None
         try:
-            response = self.search_content(query=query, n=n, verbosity=0)
             # The search object has a 'text' attribute directly
             if response and hasattr(response, 'search') and response.search:
                 return response.search.text
@@ -324,17 +327,19 @@ class GroundService:
             logger.error(f"Failed to get search context: {str(e)}")
             return None
 
-    def get_search_results_with_citations(self, query, n=20):
+    def get_search_results_with_citations(self, response):
         """
         Get search results with full citation information
 
         Returns structured results for building citations
         """
-        try:
-            response = self.search_content(query=query, n=n, verbosity=2)
+        if response is None:
+            logger.info(f"No response provided to get_search_results_with_citations")
+            return None
 
+        try:
             if not response or not hasattr(response, 'search'):
-                logger.warning(f"No search results found for query: {query}")
+                logger.warning(f"No search results found for query")
                 return None
 
             search_obj = response.search
@@ -360,7 +365,7 @@ class GroundService:
             return {
                 'context': search_obj.text if hasattr(search_obj, 'text') else '',
                 'citations': citations,
-                'query': search_obj.query if hasattr(search_obj, 'query') else query,
+                'query': search_obj.query if hasattr(search_obj, 'query') else '',
                 'next_token': search_obj.next_token if hasattr(search_obj, 'next_token') else None,
                 'total_results': search_obj.count if hasattr(search_obj, 'count') else len(citations)
             }

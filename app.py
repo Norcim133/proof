@@ -1,12 +1,15 @@
 #Chat related
-
-from pipeline import RAGService
+from pipeline import RAGService, OpenAIService
 import logging
 from errors import *
 from ui.app_body import app_body
 from ui.custom_styles import *
 import os
 from pipeline import GroundService
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 #TODO: Fix duplicate nodes
@@ -36,6 +39,10 @@ def init_RAGService():
     except Exception as e:
         raise CriticalInitializationError(f"Failed to initialize groundx_service: {str(e)}")
 
+    try:
+        st.session_state.openai_service = OpenAIService()
+    except Exception as e:
+        raise CriticalInitializationError(f"Failed to initialize openai_service: {str(e)}")
 
     st.session_state.refresh_state = False
     st.rerun()
