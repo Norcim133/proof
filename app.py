@@ -6,7 +6,8 @@ from errors import *
 from ui.app_body import app_body
 from ui.custom_styles import *
 import os
-from dotenv import load_dotenv
+from pipeline import GroundService
+
 
 #TODO: Fix duplicate nodes
 #TODO: Create admin mode (files upload)
@@ -28,6 +29,12 @@ def init_RAGService():
 
     except Exception as e:
         raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
+
+    try:
+        groundx_service = GroundService()
+        st.session_state["groundx_service"] = groundx_service
+    except Exception as e:
+        raise CriticalInitializationError(f"Failed to initialize groundx_service: {str(e)}")
 
 
     st.session_state.refresh_state = False

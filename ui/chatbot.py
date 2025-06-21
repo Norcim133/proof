@@ -74,6 +74,8 @@ def chat_windows():
                 # Get the original, raw generator from the chat engine.
                 raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
 
+                service = st.session_state.get("groundx_service", None)
+
                 # Create an instance of your new cleaning generator.
                 cleaned_response_generator = stream_and_clean_latex(raw_response_generator)
 
