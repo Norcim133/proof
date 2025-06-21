@@ -138,7 +138,7 @@ class OpenAIService:
                     choice = chunk.choices[0]
                     if hasattr(choice, 'delta') and hasattr(choice.delta, 'content'):
                         if choice.delta.content is not None:
-                            cleaned_content = choice.delta.content.replace('$', '\\$')
+                            cleaned_content = choice.delta.content.replace('$', '\\$') # Required to prevent streamlit markdown thinking $ are equations
                             yield cleaned_content
                 # Skip chunks that don't have content (like the first chunk)
 
