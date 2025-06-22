@@ -373,3 +373,31 @@ class GroundService:
         except Exception as e:
             logger.error(f"Failed to get search results with citations: {str(e)}")
             return None
+
+    def rename_bucket(self, bucket_id: str, new_name: str):
+        """
+        Rename a bucket by its ID
+
+        Args:
+            bucket_id: The ID of the bucket to rename
+            new_name: The new name for the bucket
+
+        Returns:
+            The response from the update operation
+        """
+        if not bucket_id or not new_name:
+            logger.error("Bucket ID and new name are required for rename operation")
+            raise ValueError("Bucket ID and new name are required")
+
+        try:
+            # Update the bucket with the new name
+            response = self.client.buckets.update(
+                bucket_id=bucket_id,
+                name=new_name
+            )
+            logger.info(f"Successfully renamed bucket {bucket_id} to '{new_name}'")
+            return response
+
+        except Exception as e:
+            logger.error(f"Failed to rename bucket {bucket_id}: {str(e)}")
+            raise e

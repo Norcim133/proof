@@ -43,11 +43,15 @@ def handle_settings_pills():
     try:
         if selection == "Reset Chat":
             logger.info("Resetting chat settings")
-            if st.session_state.chat_engine:
-                st.session_state.chat_engine.reset()
+            if not st.session_state.get('use_groundx', None):
+                st.session_state.retrieval_service.chat_engine=None
+                st.session_state.retrieval_service.initialize_chat_engine()
             st.session_state.chat_started = False
             st.session_state.messages = []
             st.session_state.query_nodes = None
+            st.session_state.sources_need_update = False
+            st.session_state.common_prompt = None
+            st.session_state.cached_source_nodes = []
 
             logger.info("Resetting chat")
     except Exception as e:

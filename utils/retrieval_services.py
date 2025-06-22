@@ -50,6 +50,7 @@ class LlamaCloudRetrieval(RetrievalService):
 
     def initialize_chat_engine(self):
         """Initialize LlamaCloud chat engine"""
+        logger.info("Initializing LlamaCloud chat engine")
         if not self.chat_engine:
             from utils.llama_chatbot import llama_chatbot
             self.chat_engine = llama_chatbot()
