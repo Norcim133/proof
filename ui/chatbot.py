@@ -74,32 +74,13 @@ def chat_windows():
         #===================
 
         with ai_placeholder:
-            if not st.session_state.get('use_groundx', True):
-                with st.chat_message("assistant"):
-
-                    # Get the original, raw generator from the chat engine.
-                    raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
-
-                    # Create an instance of your new cleaning generator.
-                    cleaned_response_generator = stream_and_clean_latex(raw_response_generator)
-
-                    # Pass the CLEANED generator to st.write_stream.
-                    # The 'response' variable will now hold the full, already cleaned string after the stream is done.
-                    response = st.write_stream(cleaned_response_generator)
-            else:
-                # Call to groundx context
-                rag_response = st.session_state.retrieval_service.service.search_content(prompt)
-
-                if hasattr(st.session_state.retrieval_service, 'set_cached_response'):
-                    st.session_state.retrieval_service.set_cached_response(rag_response)
-
-                # Get groundx llm formatting of response
-                context = st.session_state.retrieval_service.service.get_search_context(rag_response)
-
-                # Call to LLM
-                with st.chat_message("assistant"):
-                    stream = get_response_stream(prompt, context, st.session_state.messages)
-                    response = st.write_stream(stream)
+            with st.chat_message("assistant"):
+                # Use the retrieval service's chat method
+                stream = st.session_state.retrieval_service.get_chat_response_stream(
+                    prompt,
+                    st.session_state.messages
+                )
+                response = st.write_stream(stream)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
@@ -112,13 +93,6 @@ def chat_display():
             st.warning("Waiting for chatbot to load...")
             return
 
-        if 'chat_engine' not in st.session_state:
-            try:
-                st.session_state.chat_engine = llama_chatbot()
-            except Exception as e:
-                logging.exception(f"CHATBOT: {e}")
-                st.warning("There was a problem connecting to the chat engine. Please try again later.")
-                return
 
         chat_windows()
     except Exception as e:

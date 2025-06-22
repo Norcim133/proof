@@ -1,10 +1,9 @@
 #Chat related
-from pipeline import OpenAIService
+
 import logging
 from errors import *
 from ui.app_body import app_body
 from ui.custom_styles import *
-import os
 from dotenv import load_dotenv
 
 from utils.retrieval_services import set_retrieval_service
@@ -18,30 +17,14 @@ load_dotenv()
 #TODO: Fix duplicate nodes
 #TODO: Create admin mode (files upload)
 
-
 #@st.cache_resource
 def init_rag_service():
 
     # Set default retriever
     if 'use_groundx' not in st.session_state:
-        st.session_state['use_groundx'] = False
+        st.session_state['use_groundx'] = True
 
     set_retrieval_service()
-
-    #Direct openAI
-    try:
-        openai_api_key_from_secrets = st.secrets["OPENAI_API_KEY"]
-        if openai_api_key_from_secrets:
-            os.environ["OPENAI_API_KEY"] = openai_api_key_from_secrets
-
-    except Exception as e:
-        raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
-
-    #Azure openAI
-    try:
-        st.session_state.openai_service = OpenAIService()
-    except Exception as e:
-        raise CriticalInitializationError(f"Failed to initialize openai_service: {str(e)}")
 
     st.session_state.refresh_state = False
     st.rerun()
