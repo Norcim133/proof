@@ -5,17 +5,15 @@ import streamlit as st
 
 from errors import LlamaOperationFailedError
 
-
 def indices_list_view():
     """Display list of indices/buckets"""
-
-    st.subheader(f"Source IDs")
+    st.subheader("Source IDs")
 
     try:
         storage_items = get_storage_items()
 
         if not storage_items:
-            st.info(f"No sources found.")
+            st.info("No sources found.")
         else:
             for key, value in storage_items.items():
                 st.write(f"**{key}**: {value}")
@@ -31,31 +29,29 @@ def get_storage_items():
     if not retrieval_service:
         return {}
 
-    if st.session_state.get('use_groundx', True):
-        # For GroundX, get buckets
-        return retrieval_service.service.list_bucket_names()
-    else:
-        # For LlamaCloud, get indices
-        return retrieval_service.client.indices
+    names = retrieval_service.list_storage_names()
+    # Convert to dict format that the UI expects (name: id)
+    return {name: retrieval_service.get_storage_id(name) for name in names}
 
-
+@st.fragment
 def set_index_state_with_selector():
     st.session_state.current_index_name = st.session_state.get('indices_selector', None)
 
-
+@st.fragment
 def indices_selector():
     """Selector for indices/buckets"""
-    storage_items = get_storage_items()
+    storage_names = st.session_state.get('retrieval_service', {}).list_storage_names() or []
 
     st.selectbox(
-        f"Manage a Source",  # Remove 's' for singular
-        options=storage_items,
+        "Manage a Source",
+        options=storage_names,
         key="indices_selector",
         on_change=set_index_state_with_selector,
-        index=next((i for i, k in enumerate(storage_items) if k == st.session_state.get('current_index_name')), None)
+        index=next((i for i, name in enumerate(storage_names) if name == st.session_state.get('current_index_name')),
+                   None)
     )
 
-
+@st.fragment
 def rename_index():
     """Rename the current index/bucket"""
     current_index_name = st.session_state.get('current_index_name', None)
@@ -69,22 +65,8 @@ def rename_index():
         if not retrieval_service:
             raise Exception("Retrieval service not initialized")
 
-        if st.session_state.get('use_groundx', True):
-            # For GroundX, rename bucket
-            bucket_id = retrieval_service.service.get_bucket_id(current_index_name)
-            if bucket_id:
-                retrieval_service.service.rename_bucket(bucket_id, new_name)
-                st.session_state['current_index_name'] = new_name
-        else:
-            # For LlamaCloud, rename pipeline
-            indices_dict = retrieval_service.client.list_llama_indices()
-            pipeline_id = indices_dict[current_index_name]
-            if pipeline_id:
-                st.session_state['current_index_name'] = retrieval_service.client.rename_pipeline(
-                    new_name=new_name,
-                    pipeline_id=pipeline_id
-                )
-
+        retrieval_service.rename_storage(current_index_name, new_name)
+        st.session_state['current_index_name'] = new_name
         st.session_state.refresh_state = True
         return True
 
@@ -93,35 +75,35 @@ def rename_index():
         return False
 
 
+@st.dialog("Rename Source")
+def index_rename_dialog():
+    st.session_state['show_rename_index_dialog'] = False
+    current_index_name = st.session_state.get('current_index_name', None)
+
+    if current_index_name is None:
+        st.warning("No source selected.")
+    else:
+        st.write(f"Changing name for source: {current_index_name}")
+        st.text_input(
+            "New name:",
+            key="rename_dialog_new_name_input",
+            placeholder="Enter new name"
+        )
+
+        if st.button("Save Rename", key="rename_dialog_save_btn"):
+            if rename_index():
+                st.success(
+                    f"Successfully renamed '{current_index_name}' to '{st.session_state.get('rename_dialog_new_name_input', '')}'.")
+            else:
+                st.error(f"Failed to rename '{current_index_name}'.")
+            time.sleep(2)
+            st.rerun()
+
 def rename_index_component():
     """Component for renaming indices/buckets"""
 
-    @st.dialog(f"Rename Source")
-    def index_rename_dialog():
-        st.session_state['show_rename_index_dialog'] = False
-        current_index_name = st.session_state.get('current_index_name', None)
-
-        if current_index_name is None:
-            st.warning(f"No source selected.")
-        else:
-            st.write(f"Changing name for source: {current_index_name}")
-            st.text_input(
-                "New name:",
-                key="rename_dialog_new_name_input",
-                placeholder="Enter new name"
-            )
-
-            if st.button("Save Rename", key="rename_dialog_save_btn"):
-                if rename_index():
-                    st.success(
-                        f"Successfully renamed '{current_index_name}' to '{st.session_state.get('rename_dialog_new_name_input', '')}'.")
-                else:
-                    st.error(f"Failed to rename '{current_index_name}'.")
-                time.sleep(2)
-                st.rerun()
-
     st.button(
-        f"Rename Source",
+        "Rename Source",
         on_click=index_rename_dialog,
         disabled=not st.session_state.get('indices_selector', False)
     )
@@ -132,15 +114,14 @@ def rename_index_component():
 
 def indices_edit():
     """Edit controls for indices/buckets"""
-
     col1, col2 = st.columns(2)
     with col1:
         rename_index_component()
 
     with col2:
-        st.button(f"Delete Source")
+        st.button("Delete Source")
 
-
+@st.fragment
 def indices():
     """Main function for the indices/buckets sidebar component"""
     try:
@@ -152,7 +133,7 @@ def indices():
         elif st.session_state.get('retrieval_service', None) is None:
             st.info("Please wait for chatbot to initialize")
         else:
-            st.subheader(f"Document Sources")
+            st.subheader("Document Sources")
             st.text("")
             indices_selector()
 

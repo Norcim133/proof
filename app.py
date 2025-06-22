@@ -22,7 +22,7 @@ def init_rag_service():
 
     # Set default retriever
     if 'use_groundx' not in st.session_state:
-        st.session_state['use_groundx'] = True
+        st.session_state['use_groundx'] = False
 
     set_retrieval_service()
 

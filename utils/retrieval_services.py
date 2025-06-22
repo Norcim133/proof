@@ -28,6 +28,18 @@ class RetrievalService(ABC):
         """Get streaming chat response - each service handles its own way"""
         pass
 
+    def list_storage_names(self):
+        """Get list of storage item names (indices or buckets)"""
+        pass
+
+    def get_storage_id(self, name: str):
+        """Get the ID of a storage item by name"""
+        pass
+
+    def rename_storage(self, name: str, new_name: str):
+        """Rename a storage item"""
+        pass
+
 
 class LlamaCloudRetrieval(RetrievalService):
     def __init__(self, llama_client):
@@ -72,6 +84,25 @@ class LlamaCloudRetrieval(RetrievalService):
             cleaned_chunk = chunk.replace('$', '\$')
             yield cleaned_chunk
 
+    def list_storage_names(self):
+        """Get list of index names"""
+        indices_dict = self.client.list_llama_indices()
+        return list(indices_dict.keys())
+
+    def get_storage_id(self, name: str):
+        """Get pipeline ID by name"""
+        indices_dict = self.client.list_llama_indices()
+        return indices_dict.get(name)
+
+    def rename_storage(self, name: str, new_name: str):
+        """Rename a pipeline"""
+        pipeline_id = self.get_storage_id(name)
+        if pipeline_id:
+            return self.client.rename_pipeline(
+                new_name=new_name,
+                pipeline_id=pipeline_id
+            )
+        raise ValueError(f"Pipeline '{name}' not found")
 
 class GroundXRetrieval(RetrievalService):
     def __init__(self, groundx_service):
@@ -209,6 +240,20 @@ class GroundXRetrieval(RetrievalService):
         for chunk in self.openai_service.stream_completion(prompt, context, messages):
             yield chunk
 
+    def list_storage_names(self):
+        """Get list of bucket names"""
+        return self.service.list_bucket_names()
+
+    def get_storage_id(self, name: str):
+        """Get bucket ID by name"""
+        return self.service.get_bucket_id(name)
+
+    def rename_storage(self, name: str, new_name: str):
+        """Rename a bucket"""
+        bucket_id = self.get_storage_id(name)
+        if bucket_id:
+            return self.service.rename_bucket(bucket_id, new_name)
+        raise ValueError(f"Bucket '{name}' not found")
 
 def set_retrieval_service():
     """Get or create the retrieval service"""
