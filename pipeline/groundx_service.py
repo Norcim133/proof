@@ -393,7 +393,7 @@ class GroundService:
             # Update the bucket with the new name
             response = self.client.buckets.update(
                 bucket_id=bucket_id,
-                name=new_name
+                new_name=new_name
             )
             logger.info(f"Successfully renamed bucket {bucket_id} to '{new_name}'")
             return response

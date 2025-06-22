@@ -214,32 +214,31 @@ def set_retrieval_service():
     """Get or create the retrieval service"""
 
     try:
-        if 'retrieval_service' not in st.session_state:
-            # Azure openAI
+        # Azure openAI
+        try:
+            st.session_state.openai_service = OpenAIService()
+        except Exception as e:
+            raise CriticalInitializationError(f"Failed to initialize openai_service: {str(e)}")
+
+        # Initialize based on configuration
+        if st.session_state.get('use_groundx', True):
+            from pipeline.groundx_service import GroundService
+            groundx = GroundService()
+            retrieval = GroundXRetrieval(groundx)
+            retrieval.set_openai_service(st.session_state.openai_service)
+            st.session_state.retrieval_service = retrieval
+        else:
+            # Direct openAI
             try:
-                st.session_state.openai_service = OpenAIService()
+                openai_api_key_from_secrets = st.secrets["OPENAI_API_KEY"]
+                if openai_api_key_from_secrets:
+                    os.environ["OPENAI_API_KEY"] = openai_api_key_from_secrets
             except Exception as e:
-                raise CriticalInitializationError(f"Failed to initialize openai_service: {str(e)}")
+                raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
 
-            # Initialize based on configuration
-            if st.session_state.get('use_groundx', True):
-                from pipeline.groundx_service import GroundService
-                groundx = GroundService()
-                retrieval = GroundXRetrieval(groundx)
-                retrieval.set_openai_service(st.session_state.openai_service)
-                st.session_state.retrieval_service = retrieval
-            else:
-                # Direct openAI
-                try:
-                    openai_api_key_from_secrets = st.secrets["OPENAI_API_KEY"]
-                    if openai_api_key_from_secrets:
-                        os.environ["OPENAI_API_KEY"] = openai_api_key_from_secrets
-                except Exception as e:
-                    raise CriticalInitializationError(f"Failed to initialize rag_service: {str(e)}")
-
-                # Fallback to LlamaCloud
-                from pipeline import RAGService
-                rag_service = RAGService(llama_cloud_api_key=st.secrets['LLAMA_CLOUD_API_KEY'])
-                st.session_state.retrieval_service = LlamaCloudRetrieval(rag_service)
+            # Fallback to LlamaCloud
+            from pipeline import RAGService
+            rag_service = RAGService(llama_cloud_api_key=st.secrets['LLAMA_CLOUD_API_KEY'])
+            st.session_state.retrieval_service = LlamaCloudRetrieval(rag_service)
     except Exception as e:
         raise CriticalInitializationError("Could not initialize retrieval service") from e

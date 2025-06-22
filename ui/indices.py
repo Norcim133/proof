@@ -7,22 +7,36 @@ from errors import LlamaOperationFailedError
 
 
 def indices_list_view():
-    st.subheader("Index IDs")
-    try:
-        indices_data = st.session_state.llama.indices
+    """Display list of indices/buckets"""
 
-        if not indices_data: # This now cleanly handles the {} case for "no indices"
-            st.info("No indices found for the default project.")
+    st.subheader(f"Source IDs")
+
+    try:
+        storage_items = get_storage_items()
+
+        if not storage_items:
+            st.info(f"No sources found.")
         else:
-            for key, value in indices_data.items():
+            for key, value in storage_items.items():
                 st.write(f"**{key}**: {value}")
 
-    except LlamaOperationFailedError as e: # Catch operational errors from the API call
-        st.warning(f"API call to fetch llama indices failed: {e}")
-        logging.error(f"API call to fetch llama indices failed: {e}")
-    except Exception as e: # Catch any other truly unexpected error
-        st.error("An unexpected error occurred while displaying indices.")
-        logging.exception("Error in indices_display component")
+    except Exception as e:
+        st.warning(f"API call to fetch sources failed: {e}")
+        logging.error(f"API call to fetch sources failed: {e}")
+
+
+def get_storage_items():
+    """Get storage items (indices or buckets) from the retrieval service"""
+    retrieval_service = st.session_state.get('retrieval_service')
+    if not retrieval_service:
+        return {}
+
+    if st.session_state.get('use_groundx', True):
+        # For GroundX, get buckets
+        return retrieval_service.service.list_bucket_names()
+    else:
+        # For LlamaCloud, get indices
+        return retrieval_service.client.indices
 
 
 def set_index_state_with_selector():
@@ -30,83 +44,115 @@ def set_index_state_with_selector():
 
 
 def indices_selector():
-    #st.subheader("Theme Selector")
+    """Selector for indices/buckets"""
+    storage_items = get_storage_items()
 
-    st.selectbox("Manage a Store",
-                 options = st.session_state.llama.indices,
-                 key = "indices_selector",
-                 on_change=set_index_state_with_selector,
-                 index = next((i for i, k in enumerate(st.session_state.llama.indices) if k == st.session_state.get('current_index_name')), None))
+    st.selectbox(
+        f"Manage a Source",  # Remove 's' for singular
+        options=storage_items,
+        key="indices_selector",
+        on_change=set_index_state_with_selector,
+        index=next((i for i, k in enumerate(storage_items) if k == st.session_state.get('current_index_name')), None)
+    )
 
-                 # Get index but reverts to first item in keys if item not there
 
 def rename_index():
+    """Rename the current index/bucket"""
     current_index_name = st.session_state.get('current_index_name', None)
+    new_name = st.session_state.get("rename_dialog_new_name_input", None)
+
+    if not current_index_name or not new_name:
+        return False
+
     try:
-        st.session_state['current_index_name'] = st.session_state.llama.rename_pipeline(new_name=st.session_state.get("rename_dialog_new_name_input", None),
-                                               pipeline_id=st.session_state.llama.indices.get(current_index_name, None))
+        retrieval_service = st.session_state.get('retrieval_service')
+        if not retrieval_service:
+            raise Exception("Retrieval service not initialized")
+
+        if st.session_state.get('use_groundx', True):
+            # For GroundX, rename bucket
+            bucket_id = retrieval_service.service.get_bucket_id(current_index_name)
+            if bucket_id:
+                retrieval_service.service.rename_bucket(bucket_id, new_name)
+                st.session_state['current_index_name'] = new_name
+        else:
+            # For LlamaCloud, rename pipeline
+            indices_dict = retrieval_service.client.list_llama_indices()
+            pipeline_id = indices_dict[current_index_name]
+            if pipeline_id:
+                st.session_state['current_index_name'] = retrieval_service.client.rename_pipeline(
+                    new_name=new_name,
+                    pipeline_id=pipeline_id
+                )
 
         st.session_state.refresh_state = True
         return True
+
     except Exception as e:
-        st.error(f"Error renaming index: {e}")
+        st.error(f"Error renaming: {e}")
         return False
 
 
 def rename_index_component():
+    """Component for renaming indices/buckets"""
 
-    @st.dialog("Rename Store")
+    @st.dialog(f"Rename Source")
     def index_rename_dialog():
         st.session_state['show_rename_index_dialog'] = False
         current_index_name = st.session_state.get('current_index_name', None)
-        if current_index_name is None:
-            st.warning("No current index name selected.")
-        else:
-            st.write(f"Changing name for theme: {current_index_name}")
-            st.text_input("New name:",
-                           key="rename_dialog_new_name_input",
-                           placeholder="Enter new name")
 
-            if st.button("Save Rename",
-                         key="rename_dialog_save_btn"
-                         ):
+        if current_index_name is None:
+            st.warning(f"No source selected.")
+        else:
+            st.write(f"Changing name for source: {current_index_name}")
+            st.text_input(
+                "New name:",
+                key="rename_dialog_new_name_input",
+                placeholder="Enter new name"
+            )
+
+            if st.button("Save Rename", key="rename_dialog_save_btn"):
                 if rename_index():
-                    st.success(f"Successfully sent request to rename '{current_index_name}' to '{st.session_state['current_index_name']}'.")
-                else:
                     st.success(
-                        f"Failed to rename '{current_index_name}'.")
+                        f"Successfully renamed '{current_index_name}' to '{st.session_state.get('rename_dialog_new_name_input', '')}'.")
+                else:
+                    st.error(f"Failed to rename '{current_index_name}'.")
                 time.sleep(2)
                 st.rerun()
 
-    st.button("Rename Store",
-              on_click=index_rename_dialog,
-              disabled=not st.session_state.get('indices_selector', False)
-              )
+    st.button(
+        f"Rename Source",
+        on_click=index_rename_dialog,
+        disabled=not st.session_state.get('indices_selector', False)
+    )
 
     if st.session_state.get("show_rename_index_dialog", False):
         index_rename_dialog()
 
 
 def indices_edit():
+    """Edit controls for indices/buckets"""
+
     col1, col2 = st.columns(2)
     with col1:
         rename_index_component()
 
     with col2:
-        st.button("Delete Store")
+        st.button(f"Delete Source")
+
 
 def indices():
+    """Main function for the indices/buckets sidebar component"""
     try:
         if "current_index_name" not in st.session_state:
             st.session_state['current_index_name'] = None
 
         if not st.user.is_logged_in:
             st.info("Please log in to get started.")
-        elif st.session_state.get('llama', None) is None:
+        elif st.session_state.get('retrieval_service', None) is None:
             st.info("Please wait for chatbot to initialize")
         else:
-            #indices_list_view()
-            st.subheader("Document Stores")
+            st.subheader(f"Document Sources")
             st.text("")
             indices_selector()
 
