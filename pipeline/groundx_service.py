@@ -45,7 +45,7 @@ class GroundService:
 
             # If group already exists, return it
             if group_names and self.target_group_name in group_names:
-                # You'll need to implement get_group_by_name or similar
+
                 existing_group = self.get_group_by_name(self.target_group_name)
                 logger.info(f"Group '{self.target_group_name}' already exists")
                 return existing_group

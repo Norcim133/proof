@@ -119,6 +119,7 @@ def render_image_content(node: Dict):
     if st.button(button_text, use_container_width=True, key=f"{node['id']}_{idx}_expand_image"):
         file_dialog_preview(img=node['content'])
 
+
 def display_sources():
     """Main function to display sources"""
     # Check if we have a prompt
@@ -126,39 +127,51 @@ def display_sources():
         st.info("Awaiting AI response to begin...")
         return
 
-    # Get the retrieval service
     if not st.session_state.get('retrieval_service', None):
         st.error("No retrieval service configured")
         return
 
+    # Initialize nodes storage if not exists
+    if 'cached_source_nodes' not in st.session_state:
+        st.session_state.cached_source_nodes = []
 
-    try:
-        with st.spinner("Retrieving references..."):
 
-            nodes = st.session_state.retrieval_service.retrieve(st.session_state.current_user_prompt)
+    # Only fetch new sources if flag is set
+    if st.session_state.get('sources_need_update', False):
+        try:
+            with st.spinner("Retrieving references..."):
+                nodes = st.session_state.retrieval_service.retrieve(st.session_state.current_user_prompt)
 
-        # Render images
-        render_sources(
-            nodes_list=nodes,
-            source_type='image',
-            title="Image References",
-            render_func=render_image_content
-        )
+            # Cache the nodes
+            st.session_state.cached_source_nodes = nodes
 
-        # st.divider()
-        #
-        # # Render text
-        # render_sources(
-        #     nodes_list=nodes,
-        #     source_type='text',
-        #     title="Text References",
-        #     render_func=render_text_content
-        # )
+            # Reset the flag
+            st.session_state.sources_need_update = False
 
-    except Exception as e:
-        logger.exception(f"Error displaying sources: {e}")
-        st.error("An error occurred while displaying references.")
+        except Exception as e:
+            logger.exception(f"Error retrieving sources: {e}")
+            st.error("An error occurred while retrieving references.")
+            return
 
+    # Always render from cached nodes
+    nodes = st.session_state.cached_source_nodes
+
+    # Render images
+    render_sources(
+        nodes_list=nodes,
+        source_type='image',
+        title="Visual References",
+        render_func=render_image_content
+    )
+    # st.divider()
+    #
+    # # Render text
+    # render_sources(
+    #     nodes_list=nodes,
+    #     source_type='text',
+    #     title="Text References",
+    #     render_func=render_text_content
+    # )
 
 # Streamlit fragment for the sources section
 @st.fragment

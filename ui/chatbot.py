@@ -62,6 +62,7 @@ def chat_windows():
         st.session_state.chat_started = True
         st.session_state.common_prompt = None #Reinit common prompt
         st.session_state.current_user_prompt = prompt #Used to align prompt in references query
+        st.session_state.sources_need_update = True #Used to save or reinit sources list
 
         with user_placeholder:
             st.chat_message("user").markdown(prompt)

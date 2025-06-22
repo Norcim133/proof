@@ -91,7 +91,7 @@ class GroundXRetrieval(RetrievalService):
         if self.cached_response:
             # Use the cached response - no API call
             response = self.cached_response
-            # Clear it after use if you want one-time use
+
             self.cached_response = None
         else:
             # Fallback - make API call if no cached response
