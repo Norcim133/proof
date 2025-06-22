@@ -51,7 +51,7 @@ def chat_windows():
 
     user_typed_prompt = st.chat_input(
         placeholder_text,
-        disabled=not st.session_state.get('llama', None)
+        disabled=not st.session_state.get('retrieval_service', None)
     )
 
     effective_prompt = user_typed_prompt or common_prompt_from_state
@@ -74,13 +74,11 @@ def chat_windows():
         #===================
 
         with ai_placeholder:
-            if False:
+            if not st.session_state.get('use_groundx', True):
                 with st.chat_message("assistant"):
 
                     # Get the original, raw generator from the chat engine.
                     raw_response_generator = st.session_state.chat_engine.stream_chat(prompt).response_gen
-
-                    service = st.session_state.get("groundx_service", None)
 
                     # Create an instance of your new cleaning generator.
                     cleaned_response_generator = stream_and_clean_latex(raw_response_generator)
@@ -88,17 +86,20 @@ def chat_windows():
                     # Pass the CLEANED generator to st.write_stream.
                     # The 'response' variable will now hold the full, already cleaned string after the stream is done.
                     response = st.write_stream(cleaned_response_generator)
+            else:
+                # Call to groundx context
+                rag_response = st.session_state.retrieval_service.service.search_content(prompt)
 
-            # Call to groundx context
-            st.session_state.rag_response = st.session_state.groundx_service.search_content(prompt)
+                if hasattr(st.session_state.retrieval_service, 'set_cached_response'):
+                    st.session_state.retrieval_service.set_cached_response(rag_response)
 
-            # Get groundx llm formatting of response
-            context = st.session_state.groundx_service.get_search_context(st.session_state.rag_response)
+                # Get groundx llm formatting of response
+                context = st.session_state.retrieval_service.service.get_search_context(rag_response)
 
-            # Call to LLM
-            with st.chat_message("assistant"):
-                stream = get_response_stream(prompt, context, st.session_state.messages)
-                response = st.write_stream(stream)
+                # Call to LLM
+                with st.chat_message("assistant"):
+                    stream = get_response_stream(prompt, context, st.session_state.messages)
+                    response = st.write_stream(stream)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
@@ -107,7 +108,7 @@ def chat_windows():
 def chat_display():
     try:
 
-        if not st.session_state.get('llama', False):
+        if not st.session_state.get('retrieval_service', False):
             st.warning("Waiting for chatbot to load...")
             return
 
