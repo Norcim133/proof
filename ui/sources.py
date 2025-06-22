@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def render_sources(nodes_list: List[Dict], source_type: str, title: str, render_func):
     """Generic source renderer that handles common logic"""
-    st.subheader(title)
+    #st.subheader(title)
 
     try:
         filtered_nodes = [
@@ -85,7 +85,7 @@ def render_text_content(node: Dict):
 
 
 @st.fragment
-def render_image_content(node: Dict):
+def _render_image_content(node: Dict):
     """Render image content"""
     file_name = node.get('metadata', {}).get('file_name', 'Image')
     st.image(node['content'], caption=file_name)
@@ -94,6 +94,30 @@ def render_image_content(node: Dict):
         file_dialog_preview(img=node['content'])
 
 
+@st.fragment
+def render_image_content(node: Dict):
+    """Render image content"""
+    metadata = node.get('metadata', {})
+    image_type = metadata.get('image_type', 'image')
+
+    # Different captions based on image type
+    if image_type == 'figure':
+        caption = metadata.get('caption', 'Figure from document')
+        button_text = "Expand Figure"
+    elif image_type == 'page':
+        file_name = metadata.get('file_name', 'Document')
+        page_idx = metadata.get('page_index', 0)
+        caption = f"{file_name} - Page view {page_idx + 1}" if page_idx > 0 else file_name
+        button_text = "Expand Page"
+    else:
+        caption = metadata.get('file_name', 'Image')
+        button_text = "Expand Image"
+
+    st.image(node['content'], caption=caption)
+
+    idx = node.get('_index', 0)
+    if st.button(button_text, use_container_width=True, key=f"{node['id']}_{idx}_expand_image"):
+        file_dialog_preview(img=node['content'])
 
 def display_sources():
     """Main function to display sources"""
@@ -121,15 +145,15 @@ def display_sources():
             render_func=render_image_content
         )
 
-        st.divider()
-
-        # Render text
-        render_sources(
-            nodes_list=nodes,
-            source_type='text',
-            title="Text References",
-            render_func=render_text_content
-        )
+        # st.divider()
+        #
+        # # Render text
+        # render_sources(
+        #     nodes_list=nodes,
+        #     source_type='text',
+        #     title="Text References",
+        #     render_func=render_text_content
+        # )
 
     except Exception as e:
         logger.exception(f"Error displaying sources: {e}")

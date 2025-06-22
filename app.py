@@ -13,16 +13,16 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file
 load_dotenv()
 
-#TODO: Refactor retrievalservices to other file
-#TODO: Fix duplicate nodes
+
 #TODO: Create admin mode (files upload)
+#TODO: Add logic to prevent duplicate nodes in llamacloud (low priority)
 
 #@st.cache_resource
 def init_rag_service():
 
     # Set default retriever
     if 'use_groundx' not in st.session_state:
-        st.session_state['use_groundx'] = True
+        st.session_state['use_groundx'] = False
 
     set_retrieval_service()
 

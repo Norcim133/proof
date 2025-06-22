@@ -44,7 +44,7 @@ class LlamaCloudRetrieval(RetrievalService):
             raise
 
     def process_results(self, raw_results: Any) -> List[Dict[str, Any]]:
-        # Your existing process_retrieved_nodes logic
+        # existing process_retrieved_nodes logic
         from utils.node_processor import process_retrieved_nodes
         return process_retrieved_nodes(raw_results)
 
@@ -100,43 +100,84 @@ class GroundXRetrieval(RetrievalService):
 
         return self.process_results(response)
 
+
     def process_results(self, search_response) -> List[Dict[str, Any]]:
         """Convert GroundX SearchResponse to standardized format"""
         if not search_response:
             return []
 
-        # Extract citations from the response
         results = self.service.get_search_results_with_citations(search_response)
         if not results:
             return []
 
         processed = []
+        seen_urls = set()  # Track URLs we've already processed
+        node_index = 0
 
-        for idx, citation in enumerate(results.get('citations', [])):
-            # Generate a unique ID combining document ID and index
-            unique_id = f"{citation.get('document_id', 'unknown')}_{idx}"
-
-            node = {
-                'id': unique_id,  # Use the unique ID
-                'document_id': citation.get('document_id', ''),  # Keep original if needed
-                'type': 'text',
-                'content': citation.get('text', citation.get('suggested_text', '')),
+        for citation in results.get('citations', []):
+            # Base information for all nodes from this citation
+            base_info = {
                 'score': citation.get('score', 0) / 100.0,  # Normalize score to 0-1
                 'url': citation.get('source_url', ''),
                 'metadata': {
                     'file_name': citation.get('file_name', 'Unknown'),
                     'bucket_id': citation.get('bucket_id'),
-                    'page_images': citation.get('page_images', [])
+                    'document_id': citation.get('document_id'),
                 }
             }
 
-            # If there are page images, add them as image nodes
-            if citation.get('page_images'):
-                node['type'] = 'image' if not node['content'] else 'text'
-                if node['type'] == 'image' and citation['page_images']:
-                    node['content'] = citation['page_images'][0]  # First image
+            # Add text node if there's text content
+            if citation.get('text') or citation.get('suggested_text'):
+                text_node = {
+                    **base_info,
+                    'id': f"{citation.get('document_id', 'unknown')}_{node_index}",
+                    'type': 'text',
+                    'content': citation.get('text', citation.get('suggested_text', '')),
+                }
 
-            processed.append(node)
+                # Add JSON data to metadata if present
+                if citation.get('json'):
+                    text_node['metadata']['json_data'] = citation['json']
+
+                processed.append(text_node)
+                node_index += 1
+
+            # Add multimodal image node if present (charts/figures)
+            if citation.get('multimodalUrl') and citation['multimodalUrl'] not in seen_urls:
+                seen_urls.add(citation['multimodalUrl'])
+                multimodal_node = {
+                    **base_info,
+                    'id': f"{citation.get('document_id', 'unknown')}_{node_index}_multimodal",
+                    'type': 'image',
+                    'content': citation['multimodalUrl'],
+                    'metadata': {
+                        **base_info['metadata'],
+                        'image_type': 'figure',
+                        'caption': citation.get('suggested_text', 'Figure from document')[:200]
+                    }
+                }
+                processed.append(multimodal_node)
+                node_index += 1
+
+            # Add nodes for each page image
+            page_images = citation.get('page_images', [])
+            for img_idx, page_image_url in enumerate(page_images):
+                if page_image_url not in seen_urls:
+                    seen_urls.add(page_image_url)
+                    page_node = {
+                        **base_info,
+                        'id': f"{citation.get('document_id', 'unknown')}_{node_index}_page_{img_idx}",
+                        'type': 'image',
+                        'content': page_image_url,
+                        'metadata': {
+                            **base_info['metadata'],
+                            'image_type': 'page',
+                            'page_index': img_idx,
+                            'caption': f"Page view from {citation.get('file_name', 'document')}"
+                        }
+                    }
+                    processed.append(page_node)
+                    node_index += 1
 
         return processed
 
@@ -179,7 +220,7 @@ def set_retrieval_service():
             except Exception as e:
                 raise CriticalInitializationError(f"Failed to initialize openai_service: {str(e)}")
 
-            # Initialize based on your configuration
+            # Initialize based on configuration
             if st.session_state.get('use_groundx', True):
                 from pipeline.groundx_service import GroundService
                 groundx = GroundService()
