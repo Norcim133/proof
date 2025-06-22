@@ -28,5 +28,6 @@ tests/__pycache__/
 tests/
 pytest.ini
 *.log
+Untitled.ipynb
 
 
