@@ -9,10 +9,31 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 class GroundService:
-    def __init__(self, group_name="main_group", auto_load_buckets=True):
+    def __init__(self, group_name="app_group", auto_load_buckets=True):
         try:
-            self.api_key = os.getenv("GROUNDX_API_KEY")
-            self.client = GroundX(api_key=self.api_key)
+            # Check which environment to use
+            use_onprem = os.getenv("USE_ONPREM", "false").lower() == "true"
+
+            if use_onprem:
+                # Use on-prem credentials
+                self.api_key = os.getenv("GROUNDX_ONPREM_API_KEY")
+                base_url = os.getenv("GROUNDX_ONPREM_BASE_URL")
+
+                if not self.api_key or not base_url:
+                    raise ValueError("GROUNDX_ONPREM_API_KEY and GROUNDX_ONPREM_BASE_URL must be set when USE_ONPREM=true")
+
+                self.client = GroundX(api_key=self.api_key, base_url=base_url)
+                logger.info("Using on-prem GroundX")
+            else:
+                # Use cloud credentials
+                self.api_key = os.getenv("GROUNDX_CLOUD_API_KEY")
+
+                if not self.api_key:
+                    raise ValueError("GROUNDX_CLOUD_API_KEY must be set when USE_ONPREM=false")
+
+                self.client = GroundX(api_key=self.api_key)
+                logger.info("Using cloud GroundX")
+
             self.target_group_name = group_name
             group = self.init_group()
             self._group_id = group.group_id
